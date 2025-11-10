@@ -8,6 +8,7 @@ import {
   Button,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 
@@ -44,22 +45,28 @@ export default function SearchListScreen({ navigation }) {
   }, [])
 
   const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.clientName}>{item.client_name}</Text>
-      <Text style={styles.line}>
-        {item.brand} {item.model} ({item.year_min || '?'} - {item.year_max || '?'})
-      </Text>
-      <Text style={styles.line}>
-        Precio: {item.price_min ? item.price_min.toLocaleString('es-AR') : '?'} -{' '}
-        {item.price_max ? item.price_max.toLocaleString('es-AR') : '?'}
-      </Text>
-      {item.client_phone ? (
-        <Text style={styles.line}>Tel: {item.client_phone}</Text>
-      ) : null}
-      <Text style={styles.date}>
-        {new Date(item.created_at).toLocaleString('es-AR')}
-      </Text>
-    </View>
+    <TouchableOpacity
+      onPress={() => navigation.navigate('SearchDetail', { search: item })}
+      activeOpacity={0.7}
+    >
+      <View style={styles.card}>
+        <Text style={styles.clientName}>{item.client_name}</Text>
+        <Text style={styles.line}>
+          {item.brand} {item.model} ({item.year_min || '?'} - {item.year_max || '?'})
+        </Text>
+        <Text style={styles.line}>
+          Precio:{' '}
+          {item.price_min ? item.price_min.toLocaleString('es-AR') : '?'} -{' '}
+          {item.price_max ? item.price_max.toLocaleString('es-AR') : '?'}
+        </Text>
+        {item.client_phone ? (
+          <Text style={styles.line}>Tel: {item.client_phone}</Text>
+        ) : null}
+        <Text style={styles.date}>
+          {new Date(item.created_at).toLocaleString('es-AR')}
+        </Text>
+      </View>
+    </TouchableOpacity>
   )
 
   return (
