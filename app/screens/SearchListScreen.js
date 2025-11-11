@@ -1,4 +1,4 @@
-// screens/SearchListScreen.js
+// app/screens/SearchListScreen.js
 import React, { useEffect, useState, useCallback } from 'react'
 import {
   View,
@@ -19,42 +19,119 @@ export default function SearchListScreen({ navigation }) {
   const [filterStatus, setFilterStatus] = useState('activa') // 'activa' | 'todas'
 
   const loadSearches = async () => {
-  setLoading(true)
+    setLoading(true)
 
-  const { data: searchesData, error: searchError } = await supabase
-    .from('search_requests')
-    .select('*')
-    .order('created_at', { ascending: false })
+    try {
+      // Pedimos TODO lo que necesitamos en paralelo:
+      const [searchRes, vehicleRes, interactionsRes] = await Promise.all([
+        supabase
+          .from('search_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase.from('vehicles').select('brand, model, year, price'),
+        supabase.from('interactions').select('search_request_id, created_at'),
+      ])
 
-  const { data: vehiclesData, error: vehicleError } = await supabase
-    .from('vehicles')
-    .select('brand, model, year, price')
+      if (searchRes.error) {
+        console.log('Error loading searches', searchRes.error)
+        setSearches([])
+        setLoading(false)
+        return
+      }
+      if (vehicleRes.error) {
+        console.log('Error loading vehicles for matches', vehicleRes.error)
+      }
+      if (interactionsRes.error) {
+        console.log('Error loading interactions', interactionsRes.error)
+      }
 
-  if (searchError || vehicleError) {
-    console.log('Error cargando datos', searchError || vehicleError)
+      const searchesData = searchRes.data || []
+      const vehiclesData = vehicleRes.data || []
+      const interactionsData = interactionsRes.data || []
+
+      // Mapa de última interacción por búsqueda
+      const latestBySearchId = {}
+      interactionsData.forEach((i) => {
+        const prev = latestBySearchId[i.search_request_id]
+        if (!prev || new Date(i.created_at) > new Date(prev)) {
+          latestBySearchId[i.search_request_id] = i.created_at
+        }
+      })
+
+      const now = new Date()
+      const todayY = now.getFullYear()
+      const todayM = now.getMonth()
+      const todayD = now.getDate()
+
+      const isSameDayOrBeforeToday = (dateStr) => {
+        if (!dateStr) return false
+        const d = new Date(dateStr)
+        const y = d.getFullYear()
+        const m = d.getMonth()
+        const dd = d.getDate()
+        // <= hoy (ignorando hora)
+        if (y < todayY) return true
+        if (y > todayY) return false
+        if (m < todayM) return true
+        if (m > todayM) return false
+        if (dd <= todayD) return true
+        return false
+      }
+
+      const isSameDay = (dateStr) => {
+        if (!dateStr) return false
+        const d = new Date(dateStr)
+        return (
+          d.getFullYear() === todayY &&
+          d.getMonth() === todayM &&
+          d.getDate() === todayD
+        )
+      }
+
+      // Enriquecemos cada búsqueda:
+      const enhanced = searchesData.map((s) => {
+        // Match de autos: marca + rango de año + rango de precio
+        const matches = vehiclesData.filter((v) => {
+          const brandOk =
+            !s.brand ||
+            !v.brand ||
+            v.brand.toLowerCase() === s.brand.toLowerCase()
+          const modelOk =
+            !s.model ||
+            !v.model ||
+            v.model.toLowerCase() === s.model.toLowerCase()
+
+          const yearOk =
+            (!s.year_min || !v.year || v.year >= s.year_min) &&
+            (!s.year_max || !v.year || v.year <= s.year_max)
+
+          const priceOk =
+            (!s.price_min || !v.price || v.price >= s.price_min) &&
+            (!s.price_max || !v.price || v.price <= s.price_max)
+
+          return brandOk && modelOk && yearOk && priceOk
+        })
+
+        const lastInteractionAt = latestBySearchId[s.id] || null
+        const hasReminderToday = s.reminder_at && isSameDay(s.reminder_at)
+
+        return {
+          ...s,
+          has_match: matches.length > 0,
+          match_count: matches.length,
+          lastInteractionAt,
+          hasReminderToday,
+        }
+      })
+
+      setSearches(enhanced)
+    } catch (err) {
+      console.log('Unexpected error loading searches', err)
+      setSearches([])
+    }
+
     setLoading(false)
-    return
   }
-
-  // lógica básica de coincidencia (marca + rango año + rango precio)
-  const enhanced = searchesData.map((s) => {
-    const matches = vehiclesData?.filter((v) => {
-      const brandOk = v.brand?.toLowerCase() === s.brand?.toLowerCase()
-      const yearOk =
-        (!s.year_min || v.year >= s.year_min) &&
-        (!s.year_max || v.year <= s.year_max)
-      const priceOk =
-        (!s.price_min || v.price >= s.price_min) &&
-        (!s.price_max || v.price <= s.price_max)
-      return brandOk && yearOk && priceOk
-    })
-    return { ...s, has_match: matches?.length > 0 }
-  })
-
-  setSearches(enhanced)
-  setLoading(false)
-}
-
 
   useEffect(() => {
     loadSearches()
@@ -68,12 +145,49 @@ export default function SearchListScreen({ navigation }) {
     setRefreshing(false)
   }, [])
 
-  const filteredSearches =
+  // Calculamos el orden de "agenda"
+  const getPriority = (s) => {
+    const now = new Date()
+    const reminder = s.reminder_at ? new Date(s.reminder_at) : null
+    const lastInt = s.lastInteractionAt
+      ? new Date(s.lastInteractionAt)
+      : null
+
+    // Recordatorio vencido o para hoy → prioridad máxima
+    if (reminder && reminder <= now) return 0
+    // Recordatorio futuro → segundo nivel
+    if (reminder && reminder > now) return 1
+    // Sin recordatorio pero con interacciones → tercero
+    if (lastInt) return 2
+    // Nunca tocada → cuarta
+    return 3
+  }
+
+  const filteredSearchesRaw =
     filterStatus === 'todas'
       ? searches
       : searches.filter((s) => (s.status || 'activa') === 'activa')
 
-  const renderItem = ({ item }) => {
+  const filteredSearches = [...filteredSearchesRaw].sort((a, b) => {
+    const pa = getPriority(a)
+    const pb = getPriority(b)
+    if (pa !== pb) return pa - pb
+
+    // Si tienen recordatorio, ordenamos por el más próximo
+    if (a.reminder_at && b.reminder_at) {
+      return new Date(a.reminder_at) - new Date(b.reminder_at)
+    }
+
+    // Si tienen última interacción, ordenamos por la más vieja primero
+    if (a.lastInteractionAt && b.lastInteractionAt) {
+      return new Date(a.lastInteractionAt) - new Date(b.lastInteractionAt)
+    }
+
+    // Fallback: más nuevas primero
+    return new Date(b.created_at) - new Date(a.created_at)
+  })
+
+ const renderItem = ({ item }) => {
   const status = item.status || 'activa'
   const statusLabelMap = {
     activa: 'Activa',
@@ -83,7 +197,10 @@ export default function SearchListScreen({ navigation }) {
   }
   const statusLabel = statusLabelMap[status] || status
 
-  const hasMatch = item.has_match // este campo lo vamos a calcular más abajo
+  const hasMatch = item.has_match
+  const matchCount = item.match_count || 0
+  const lastInteractionAt = item.lastInteractionAt
+  const hasReminderToday = item.hasReminderToday
 
   return (
     <TouchableOpacity
@@ -116,12 +233,39 @@ export default function SearchListScreen({ navigation }) {
         ) : null}
 
         {hasMatch && (
-          <Text style={styles.matchText}>✅ Coincidencia encontrada</Text>
+          <Text style={styles.matchText}>
+            ✅{' '}
+            {matchCount === 1
+              ? '1 auto coincide'
+              : `${matchCount} autos coinciden`}
+          </Text>
+        )}
+
+        {lastInteractionAt && (
+          <Text style={styles.lastInteractionText}>
+            Último contacto:{' '}
+            {new Date(lastInteractionAt).toLocaleString('es-AR')}
+          </Text>
+        )}
+
+        {item.reminder_at && (
+          <Text
+            style={[
+              styles.reminderText,
+              hasReminderToday && styles.reminderTodayText,
+            ]}
+          >
+            Recordar:{' '}
+            {new Date(item.reminder_at).toLocaleDateString('es-AR')}
+            {hasReminderToday ? ' (hoy)' : ''}
+          </Text>
         )}
 
         <Text style={styles.date}>
-          {new Date(item.created_at).toLocaleString('es-AR')}
+          Alta: {new Date(item.created_at).toLocaleString('es-AR')}
         </Text>
+
+        
       </View>
     </TouchableOpacity>
   )
@@ -130,48 +274,47 @@ export default function SearchListScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-    <View style={styles.topBar}>
-  <View>
-    <Text style={styles.title}>Búsquedas</Text>
-    <View style={styles.filterRow}>
-      <Text
-        style={[
-          styles.filterChip,
-          filterStatus === 'activa' && styles.filterChipActive,
-        ]}
-        onPress={() => setFilterStatus('activa')}
-      >
-        Activas
-      </Text>
-      <Text
-        style={[
-          styles.filterChip,
-          filterStatus === 'todas' && styles.filterChipActive,
-        ]}
-        onPress={() => setFilterStatus('todas')}
-      >
-        Todas
-      </Text>
-    </View>
-  </View>
-  <View style={styles.actionsRow}>
-    <Button
-      title="Dash"
-      onPress={() => navigation.navigate('Dashboard')}
-    />
-    <View style={{ width: 8 }} />
-    <Button
-      title="Autos"
-      onPress={() => navigation.navigate('VehicleList')}
-    />
-    <View style={{ width: 8 }} />
-    <Button
-      title="+ Nueva"
-      onPress={() => navigation.navigate('NewSearch')}
-    />
-  </View>
-</View>
-
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.title}>Búsquedas</Text>
+          <View style={styles.filterRow}>
+            <Text
+              style={[
+                styles.filterChip,
+                filterStatus === 'activa' && styles.filterChipActive,
+              ]}
+              onPress={() => setFilterStatus('activa')}
+            >
+              Activas
+            </Text>
+            <Text
+              style={[
+                styles.filterChip,
+                filterStatus === 'todas' && styles.filterChipActive,
+              ]}
+              onPress={() => setFilterStatus('todas')}
+            >
+              Todas
+            </Text>
+          </View>
+        </View>
+        <View style={styles.actionsRow}>
+          <Button
+            title="Dash"
+            onPress={() => navigation.navigate('Dashboard')}
+          />
+          <View style={{ width: 8 }} />
+          <Button
+            title="Autos"
+            onPress={() => navigation.navigate('VehicleList')}
+          />
+          <View style={{ width: 8 }} />
+          <Button
+            title="+ Nueva"
+            onPress={() => navigation.navigate('NewSearch')}
+          />
+        </View>
+      </View>
 
       {loading && filteredSearches.length === 0 ? (
         <ActivityIndicator size="large" />
@@ -224,6 +367,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
+  cardMatched: {
+    backgroundColor: '#e6ffe6',
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -243,19 +391,26 @@ const styles = StyleSheet.create({
   status_descartada: { backgroundColor: '#6c757d' },
   line: { fontSize: 14 },
   source: { fontSize: 12, color: '#555', marginTop: 2 },
+  matchText: {
+    marginTop: 4,
+    color: '#28a745',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  lastInteractionText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#444',
+  },
+  reminderText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#555',
+  },
+  reminderTodayText: {
+    color: '#d9534f',
+    fontWeight: '700',
+  },
   date: { marginTop: 6, fontSize: 12, color: '#666' },
   emptyText: { marginTop: 40, textAlign: 'center', color: '#666' },
-  cardMatched: {
-  backgroundColor: '#e6ffe6',
-  borderColor: '#28a745',
-  borderWidth: 1,
-},
-matchText: {
-  marginTop: 4,
-  color: '#28a745',
-  fontSize: 13,
-  fontWeight: '600',
-},
-
 })
-

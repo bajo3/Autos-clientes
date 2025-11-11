@@ -45,36 +45,59 @@ export default function VehicleListScreen({ navigation }) {
   }, [])
 
   const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>
-          {item.brand} {item.model} {item.version ? `- ${item.version}` : ''}
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => navigation.navigate('VehicleDetail', { vehicle: item })}
+    >
+      <View style={styles.card}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>
+            {item.brand} {item.model} {item.version ? `- ${item.version}` : ''}
+          </Text>
+          {item.is_consignment && (
+            <View style={styles.badgeConsigna}>
+              <Text style={styles.badgeText}>Consignación</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.line}>
+          Año: {item.year || '-'} | KM:{' '}
+          {item.km ? item.km.toLocaleString('es-AR') : '-'}
         </Text>
-        {item.is_consignment && (
-          <View style={styles.badgeConsigna}>
-            <Text style={styles.badgeText}>Consignación</Text>
-          </View>
-        )}
+        <Text style={styles.line}>
+          Precio:{' '}
+          {item.price
+            ? `$ ${item.price.toLocaleString('es-AR')}`
+            : '-'}
+        </Text>
+        {item.color ? (
+          <Text style={styles.line}>Color: {item.color}</Text>
+        ) : null}
+
+        {item.is_consignment && item.owner_name ? (
+          <Text style={styles.owner}>
+            Dueño: {item.owner_name}{' '}
+            {item.owner_phone ? `(${item.owner_phone})` : ''}
+          </Text>
+        ) : null}
+
+        <Text style={styles.date}>
+          {new Date(item.created_at).toLocaleString('es-AR')}
+        </Text>
+
+        {/* ⬇️ BOTÓN EDITAR EN EL CARD */}
+        <View style={styles.cardFooter}>
+          <View style={{ flex: 1 }} />
+          <Button
+            title="Editar"
+            onPress={() =>
+              navigation.navigate('EditVehicle', { vehicleId: item.id })
+            }
+          />
+        </View>
       </View>
-
-      <Text style={styles.line}>
-        Año: {item.year || '-'} | KM: {item.km ? item.km.toLocaleString('es-AR') : '-'}
-      </Text>
-      <Text style={styles.line}>
-        Precio: {item.price ? `$ ${item.price.toLocaleString('es-AR')}` : '-'}
-      </Text>
-      {item.color ? <Text style={styles.line}>Color: {item.color}</Text> : null}
-
-      {item.is_consignment && item.owner_name ? (
-        <Text style={styles.owner}>
-          Dueño: {item.owner_name} {item.owner_phone ? `(${item.owner_phone})` : ''}
-        </Text>
-      ) : null}
-
-      <Text style={styles.date}>
-        {new Date(item.created_at).toLocaleString('es-AR')}
-      </Text>
-    </View>
+    </TouchableOpacity>
   )
 
   return (
@@ -98,7 +121,9 @@ export default function VehicleListScreen({ navigation }) {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>Todavía no cargaste ningún auto.</Text>
+            <Text style={styles.emptyText}>
+              Todavía no cargaste ningún auto.
+            </Text>
           }
         />
       )}
@@ -167,6 +192,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 11,
     color: '#777',
+  },
+  cardFooter: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   emptyText: {
     marginTop: 40,

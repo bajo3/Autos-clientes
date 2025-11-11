@@ -31,7 +31,7 @@ const WHATSAPP_TEMPLATES = [
   },
 ]
 
-export default function SearchDetailScreen({ route }) {
+export default function SearchDetailScreen({ route, navigation }) {
   const [search, setSearch] = useState(route.params.search)
   const [vehicles, setVehicles] = useState([])
   const [loadingVehicles, setLoadingVehicles] = useState(false)
@@ -284,7 +284,7 @@ export default function SearchDetailScreen({ route }) {
             Años: {search.year_min || '?'} - {search.year_max || '?'}
           </Text>
           <Text style={styles.clientLine}>
-            Precio:{' '}
+            Precio{' '}
             {search.price_min
               ? search.price_min.toLocaleString('es-AR')
               : '?'}{' '}
@@ -324,6 +324,16 @@ export default function SearchDetailScreen({ route }) {
               color="#777"
               onPress={() => updateStatus('descartada')}
               disabled={updatingStatus}
+            />
+          </View>
+
+          {/* Botón para editar la búsqueda */}
+          <View style={styles.editButtonRow}>
+            <Button
+              title="Editar Cliente"
+              onPress={() =>
+                navigation.navigate('EditSearch', { searchId: search.id })
+              }
             />
           </View>
 
@@ -438,7 +448,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32, // espacio extra para que no quede pegado al borde
+    paddingBottom: 32,
   },
   searchCard: {
     backgroundColor: '#fff',
@@ -474,6 +484,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
+  },
+  editButtonRow: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
   },
   reminderRow: {
     flexDirection: 'row',

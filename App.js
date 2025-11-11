@@ -4,13 +4,19 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { StatusBar } from 'expo-status-bar'
 
+
+// Screens principales
 import SearchListScreen from './app/screens/SearchListScreen'
 import NewSearchScreen from './app/screens/NewSearchScreen'
 import VehicleListScreen from './app/screens/VehicleListScreen'
 import NewVehicleScreen from './app/screens/NewVehicleScreen'
 import SearchDetailScreen from './app/screens/SearchDetailScreen'
 import VehicleDetailScreen from './app/screens/VehicleDetailScreen'
-import DashboardScreen from './app/screens/DashboardScreen' // ⬅️ agregado
+import DashboardScreen from './app/screens/DashboardScreen'
+
+// Editores nuevos
+import EditSearchScreen from './app/screens/EditSearchScreen'
+import EditVehicleScreen from './app/screens/EditVehicleScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -54,6 +60,17 @@ export default function App() {
           component={DashboardScreen}
           options={{ title: 'Dashboard' }}
         />
+        <Stack.Screen
+          name="EditSearch"
+          component={EditSearchScreen}
+          options={{ title: 'Editar búsqueda' }}
+        />
+        <Stack.Screen
+          name="EditVehicle"
+          component={EditVehicleScreen}
+          options={{ title: 'Editar auto' }}
+        />
+
       </Stack.Navigator>
     </NavigationContainer>
   )

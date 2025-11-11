@@ -193,8 +193,11 @@ export default function NewVehicleScreen({ navigation }) {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    
   )
+  
 }
+
 
 const styles = StyleSheet.create({
   container: {
