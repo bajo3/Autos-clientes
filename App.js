@@ -10,6 +10,7 @@ import VehicleListScreen from './app/screens/VehicleListScreen'
 import NewVehicleScreen from './app/screens/NewVehicleScreen'
 import SearchDetailScreen from './app/screens/SearchDetailScreen'
 import VehicleDetailScreen from './app/screens/VehicleDetailScreen'
+import DashboardScreen from './app/screens/DashboardScreen' // ⬅️ agregado
 
 const Stack = createNativeStackNavigator()
 
@@ -47,6 +48,11 @@ export default function App() {
           name="VehicleDetail"
           component={VehicleDetailScreen}
           options={{ title: 'Detalle de auto' }}
+        />
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{ title: 'Dashboard' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

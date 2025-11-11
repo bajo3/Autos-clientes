@@ -20,6 +20,7 @@ export default function NewSearchScreen({ navigation }) {
   const [yearMax, setYearMax] = useState('')
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
+  const [source, setSource] = useState('') // NUEVO
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -40,6 +41,8 @@ export default function NewSearchScreen({ navigation }) {
         year_max: yearMax ? Number(yearMax) : null,
         price_min: priceMin ? Number(priceMin) : null,
         price_max: priceMax ? Number(priceMax) : null,
+        status: 'activa',                 // NUEVO
+        source: source.trim() || null,    // NUEVO
       },
     ])
 
@@ -74,6 +77,14 @@ export default function NewSearchScreen({ navigation }) {
         onChangeText={setClientPhone}
         placeholder="+54 9 2494..."
         keyboardType="phone-pad"
+      />
+
+      <Text style={styles.label}>Origen del lead</Text>
+      <TextInput
+        style={styles.input}
+        value={source}
+        onChangeText={setSource}
+        placeholder="WhatsApp, Instagram, Marketplace..."
       />
 
       <Text style={styles.sectionTitle}>Qué busca</Text>
