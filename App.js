@@ -8,6 +8,8 @@ import SearchListScreen from './app/screens/SearchListScreen'
 import NewSearchScreen from './app/screens/NewSearchScreen'
 import VehicleListScreen from './app/screens/VehicleListScreen'
 import NewVehicleScreen from './app/screens/NewVehicleScreen'
+import SearchDetailScreen from './app/screens/SearchDetailScreen'
+import VehicleDetailScreen from './app/screens/VehicleDetailScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -35,6 +37,16 @@ export default function App() {
           name="NewVehicle"
           component={NewVehicleScreen}
           options={{ title: 'Nuevo auto' }}
+        />
+        <Stack.Screen
+          name="SearchDetail"
+          component={SearchDetailScreen}
+          options={{ title: 'Detalle de búsqueda' }}
+        />
+        <Stack.Screen
+          name="VehicleDetail"
+          component={VehicleDetailScreen}
+          options={{ title: 'Detalle de auto' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

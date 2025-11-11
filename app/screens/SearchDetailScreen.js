@@ -6,7 +6,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  TouchableOpacity,
 } from 'react-native'
+import { Linking } from 'react-native'
 import { supabase } from '../lib/supabase'
 
 export default function SearchDetailScreen({ route }) {
@@ -50,11 +52,13 @@ export default function SearchDetailScreen({ route }) {
 
       if (error) {
         console.log('Error loading matched vehicles', error)
+        setVehicles([])
       } else {
         setVehicles(data || [])
       }
     } catch (e) {
       console.log('Unexpected error loading matches', e)
+      setVehicles([])
     }
 
     setLoading(false)
@@ -64,12 +68,21 @@ export default function SearchDetailScreen({ route }) {
     loadMatches()
   }, [])
 
+  const openWhatsApp = () => {
+    if (!search.client_phone) return
+
+    const msg = `Hola ${search.client_name}, soy de la agencia. Tengo algunos autos que se ajustan a lo que estás buscando.`
+    const phone = search.client_phone.replace(/[^0-9]/g, '') // limpia espacios, +, guiones
+
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+    Linking.openURL(url)
+  }
+
   const renderVehicle = ({ item }) => (
     <View style={styles.vehicleCard}>
       <View style={styles.vehicleHeaderRow}>
         <Text style={styles.vehicleTitle}>
-          {item.brand} {item.model}{' '}
-          {item.version ? `- ${item.version}` : ''}
+          {item.brand} {item.model} {item.version ? `- ${item.version}` : ''}
         </Text>
         {item.is_consignment && (
           <View style={styles.badgeConsigna}>
@@ -84,19 +97,10 @@ export default function SearchDetailScreen({ route }) {
       </Text>
       <Text style={styles.vehicleLine}>
         Precio:{' '}
-        {item.price
-          ? `$ ${item.price.toLocaleString('es-AR')}`
-          : '-'}
+        {item.price ? `$ ${item.price.toLocaleString('es-AR')}` : '-'}
       </Text>
       {item.color ? (
         <Text style={styles.vehicleLine}>Color: {item.color}</Text>
-      ) : null}
-
-      {item.is_consignment && item.owner_name ? (
-        <Text style={styles.vehicleOwner}>
-          Dueño: {item.owner_name}{' '}
-          {item.owner_phone ? `(${item.owner_phone})` : ''}
-        </Text>
       ) : null}
     </View>
   )
@@ -115,8 +119,7 @@ export default function SearchDetailScreen({ route }) {
         </Text>
 
         <Text style={styles.clientLine}>
-          Años:{' '}
-          {search.year_min || '?'} - {search.year_max || '?'}
+          Años: {search.year_min || '?'} - {search.year_max || '?'}
         </Text>
         <Text style={styles.clientLine}>
           Precio:{' '}
@@ -132,6 +135,14 @@ export default function SearchDetailScreen({ route }) {
         <Text style={styles.date}>
           Alta: {new Date(search.created_at).toLocaleString('es-AR')}
         </Text>
+
+        {search.client_phone ? (
+          <TouchableOpacity onPress={openWhatsApp}>
+            <Text style={styles.whatsappLink}>
+              👉 Escribirle por WhatsApp
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Matches */}
@@ -185,6 +196,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  whatsappLink: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#128C7E',
+    fontWeight: '600',
+  },
   matchesTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -221,11 +238,6 @@ const styles = StyleSheet.create({
   },
   vehicleLine: {
     fontSize: 14,
-  },
-  vehicleOwner: {
-    fontSize: 13,
-    marginTop: 4,
-    color: '#444',
   },
   emptyText: {
     marginTop: 16,
