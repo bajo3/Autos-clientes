@@ -2,8 +2,6 @@
 import React, { useEffect, useState } from 'react'
 import {
   View,
-  Text,
-  TextInput,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
@@ -11,6 +9,16 @@ import {
   Alert,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import {
+  COLORS,
+  SPACING,
+  RADIUS,
+  TYPO,
+} from '../../components/theme'
+import Card from '../../components/ui/Card'
+import SectionTitle from '../../components/ui/SectionTitle'
+import Input from '../../components/ui/Input'
+import FilterBar from '../../components/ui/FilterBar'
 
 export default function EditSearchScreen({ route, navigation }) {
   const { searchId } = route.params
@@ -101,112 +109,119 @@ export default function EditSearchScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     )
   }
 
+  const statusItems = ['activa', 'contactado', 'cerrada', 'descartada'].map(
+    (st) => ({
+      key: st,
+      label: st.charAt(0).toUpperCase() + st.slice(1),
+      active: status === st,
+      size: 'sm',
+      onPress: () => setStatus(st),
+    })
+  )
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.sectionTitle}>Datos del cliente</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Card>
+        <SectionTitle title="Datos del cliente" />
+        <Input
+          label="Nombre *"
+          value={clientName}
+          onChangeText={setClientName}
+          placeholder="Juan Pérez"
+        />
+        <Input
+          label="Teléfono"
+          value={clientPhone}
+          onChangeText={setClientPhone}
+          placeholder="+54 9..."
+          keyboardType="phone-pad"
+        />
+        <Input
+          label="Origen del lead"
+          value={source}
+          onChangeText={setSource}
+          placeholder="WhatsApp, Instagram..."
+        />
+      </Card>
 
-      <Text style={styles.label}>Nombre *</Text>
-      <TextInput
-        style={styles.input}
-        value={clientName}
-        onChangeText={setClientName}
-        placeholder="Juan Pérez"
-      />
+      <View style={styles.spacerLg} />
 
-      <Text style={styles.label}>Teléfono</Text>
-      <TextInput
-        style={styles.input}
-        value={clientPhone}
-        onChangeText={setClientPhone}
-        placeholder="+54 9..."
-        keyboardType="phone-pad"
-      />
+      <Card>
+        <SectionTitle title="Qué busca" />
+        <Input
+          label="Marca"
+          value={brand}
+          onChangeText={setBrand}
+          placeholder="Ford, VW, etc."
+        />
+        <Input
+          label="Modelo"
+          value={model}
+          onChangeText={setModel}
+          placeholder="Ecosport, Gol, etc."
+        />
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Input
+              label="Año desde"
+              value={yearMin}
+              onChangeText={setYearMin}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.col}>
+            <Input
+              label="Año hasta"
+              value={yearMax}
+              onChangeText={setYearMax}
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Input
+              label="Precio mínimo"
+              value={priceMin}
+              onChangeText={setPriceMin}
+              keyboardType="numeric"
+            />
+          </View>
+          <View style={styles.col}>
+            <Input
+              label="Precio máximo"
+              value={priceMax}
+              onChangeText={setPriceMax}
+              keyboardType="numeric"
+            />
+          </View>
+        </View>
+      </Card>
 
-      <Text style={styles.label}>Origen del lead</Text>
-      <TextInput
-        style={styles.input}
-        value={source}
-        onChangeText={setSource}
-        placeholder="WhatsApp, Instagram, Marketplace..."
-      />
+      <View style={styles.spacerLg} />
 
-      <Text style={styles.sectionTitle}>Qué busca</Text>
+      <Card>
+        <SectionTitle title="Estado" />
+        <FilterBar items={statusItems} horizontal={false} />
+      </Card>
 
-      <Text style={styles.label}>Marca</Text>
-      <TextInput
-        style={styles.input}
-        value={brand}
-        onChangeText={setBrand}
-        placeholder="Ford, VW, etc."
-      />
+      <View style={styles.spacerXl} />
 
-      <Text style={styles.label}>Modelo</Text>
-      <TextInput
-        style={styles.input}
-        value={model}
-        onChangeText={setModel}
-        placeholder="Ecosport, Gol, etc."
-      />
-
-      <Text style={styles.label}>Año desde</Text>
-      <TextInput
-        style={styles.input}
-        value={yearMin}
-        onChangeText={setYearMin}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Año hasta</Text>
-      <TextInput
-        style={styles.input}
-        value={yearMax}
-        onChangeText={setYearMax}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Precio mínimo</Text>
-      <TextInput
-        style={styles.input}
-        value={priceMin}
-        onChangeText={setPriceMin}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Precio máximo</Text>
-      <TextInput
-        style={styles.input}
-        value={priceMax}
-        onChangeText={setPriceMax}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.sectionTitle}>Estado</Text>
-
-      <View style={styles.statusRow}>
-        {['activa', 'contactado', 'cerrada', 'descartada'].map((st) => (
-          <Text
-            key={st}
-            style={[
-              styles.statusChip,
-              status === st && styles.statusChipActive,
-            ]}
-            onPress={() => setStatus(st)}
-          >
-            {st}
-          </Text>
-        ))}
-      </View>
-
-      <View style={{ marginTop: 20 }}>
+      <View style={styles.footer}>
         <Button
           title={saving ? 'Guardando...' : 'Guardar cambios'}
           onPress={handleSave}
           disabled={saving}
+          color={COLORS.primary}
         />
       </View>
     </ScrollView>
@@ -214,50 +229,36 @@ export default function EditSearchScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.background,
   },
   container: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  label: { fontSize: 14, marginTop: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  statusRow: {
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 4,
+    gap: SPACING.sm,
   },
-  statusChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginRight: 8,
-    marginTop: 4,
-    fontSize: 13,
-    color: '#555',
+  col: {
+    flex: 1,
   },
-  statusChipActive: {
-    borderColor: '#007aff',
-    backgroundColor: '#007aff11',
-    color: '#007aff',
-    fontWeight: '600',
+  spacerLg: {
+    height: SPACING.lg,
+  },
+  spacerXl: {
+    height: SPACING.xl,
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.separator,
+    paddingTop: SPACING.md,
   },
 })

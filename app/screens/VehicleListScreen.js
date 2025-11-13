@@ -11,6 +11,13 @@ import {
   TouchableOpacity,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import {
+  COLORS,
+  SPACING,
+  RADIUS,
+  TYPO,
+  SHADOWS,
+} from '../../components/theme'
 
 export default function VehicleListScreen({ navigation }) {
   const [vehicles, setVehicles] = useState([])
@@ -22,6 +29,7 @@ export default function VehicleListScreen({ navigation }) {
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')
+      .eq('archived', false) // SOLO no archivados
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -51,7 +59,7 @@ export default function VehicleListScreen({ navigation }) {
     >
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>
+          <Text style={styles.title} numberOfLines={2}>
             {item.brand} {item.model} {item.version ? `- ${item.version}` : ''}
           </Text>
           {item.is_consignment && (
@@ -62,35 +70,42 @@ export default function VehicleListScreen({ navigation }) {
         </View>
 
         <Text style={styles.line}>
-          Año: {item.year || '-'} | KM:{' '}
-          {item.km ? item.km.toLocaleString('es-AR') : '-'}
+          Año: <Text style={styles.lineStrong}>{item.year || '-'}</Text> | KM:{' '}
+          <Text style={styles.lineStrong}>
+            {item.km ? item.km.toLocaleString('es-AR') : '-'}
+          </Text>
         </Text>
+
         <Text style={styles.line}>
           Precio:{' '}
-          {item.price
-            ? `$ ${item.price.toLocaleString('es-AR')}`
-            : '-'}
+          <Text style={styles.price}>
+            {item.price ? `$ ${item.price.toLocaleString('es-AR')}` : '-'}
+          </Text>
         </Text>
+
         {item.color ? (
-          <Text style={styles.line}>Color: {item.color}</Text>
+          <Text style={styles.line}>
+            Color: <Text style={styles.lineStrong}>{item.color}</Text>
+          </Text>
         ) : null}
 
         {item.is_consignment && item.owner_name ? (
           <Text style={styles.owner}>
-            Dueño: {item.owner_name}{' '}
+            Dueño: <Text style={styles.lineStrong}>{item.owner_name}</Text>{' '}
             {item.owner_phone ? `(${item.owner_phone})` : ''}
           </Text>
         ) : null}
 
         <Text style={styles.date}>
+          Cargado:{' '}
           {new Date(item.created_at).toLocaleString('es-AR')}
         </Text>
 
-        {/* ⬇️ BOTÓN EDITAR EN EL CARD */}
         <View style={styles.cardFooter}>
           <View style={{ flex: 1 }} />
           <Button
             title="Editar"
+            color={COLORS.primary}
             onPress={() =>
               navigation.navigate('EditVehicle', { vehicleId: item.id })
             }
@@ -103,23 +118,32 @@ export default function VehicleListScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Text style={styles.screenTitle}>Autos</Text>
+        <View>
+          <Text style={styles.screenTitle}>Autos</Text>
+          <Text style={styles.screenSubtitle}>
+            Lista de unidades no archivadas
+          </Text>
+        </View>
         <Button
           title="+ Nuevo"
+          color={COLORS.secondary}
           onPress={() => navigation.navigate('NewVehicle')}
         />
       </View>
 
       {loading && vehicles.length === 0 ? (
-        <ActivityIndicator size="large" />
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
       ) : (
         <FlatList
           data={vehicles}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               Todavía no cargaste ningún auto.
@@ -134,73 +158,99 @@ export default function VehicleListScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-end',
+    marginBottom: SPACING.md,
   },
   screenTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: TYPO.title,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  screenSubtitle: {
+    marginTop: 2,
+    fontSize: TYPO.small,
+    color: COLORS.textMuted,
+  },
+  loadingBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: {
+    paddingBottom: SPACING.xxl,
   },
   card: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    backgroundColor: COLORS.cardAlt,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    marginBottom: SPACING.sm,
+    ...SHADOWS.card,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   title: {
-    fontSize: 16,
+    fontSize: TYPO.subtitle,
     fontWeight: '600',
+    color: COLORS.text,
     flex: 1,
-    marginRight: 8,
+    marginRight: SPACING.sm,
   },
   badgeConsigna: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 100,
-    backgroundColor: '#ffe9d5',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.highlight,
   },
   badgeText: {
-    fontSize: 11,
-    color: '#d26900',
-    fontWeight: '500',
+    fontSize: TYPO.tiny,
+    color: COLORS.textInverted,
+    fontWeight: '600',
   },
   line: {
-    fontSize: 14,
+    fontSize: TYPO.body,
+    color: COLORS.textSoft,
+    marginTop: 2,
+  },
+  lineStrong: {
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  price: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   owner: {
-    fontSize: 13,
+    fontSize: TYPO.small,
     marginTop: 4,
-    color: '#444',
+    color: COLORS.textSoft,
   },
   date: {
-    marginTop: 6,
-    fontSize: 11,
-    color: '#777',
+    marginTop: SPACING.xs,
+    fontSize: TYPO.tiny,
+    color: COLORS.textMuted,
   },
   cardFooter: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
   emptyText: {
-    marginTop: 40,
+    marginTop: SPACING.xl,
     textAlign: 'center',
-    color: '#666',
+    color: COLORS.textMuted,
+    fontSize: TYPO.body,
   },
 })

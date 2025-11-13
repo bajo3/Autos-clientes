@@ -1,15 +1,20 @@
-// screens/NewSearchScreen.js
+// app/screens/NewSearchScreen.js
 import React, { useState } from 'react'
 import {
   View,
-  Text,
-  TextInput,
   Button,
   StyleSheet,
   Alert,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { COLORS, SPACING } from '../../components/theme'
+import Card from '../../components/ui/Card'
+import SectionTitle from '../../components/ui/SectionTitle'
+import Input from '../../components/ui/Input'
+import Spacer from '../../components/ui/Spacer'
 
 export default function NewSearchScreen({ navigation }) {
   const [clientName, setClientName] = useState('')
@@ -20,8 +25,10 @@ export default function NewSearchScreen({ navigation }) {
   const [yearMax, setYearMax] = useState('')
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
-  const [source, setSource] = useState('') // NUEVO
+  const [source, setSource] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const normalize = (str) => (str ? str.trim().toLowerCase() : null)
 
   const handleSave = async () => {
     if (!clientName.trim()) {
@@ -35,14 +42,14 @@ export default function NewSearchScreen({ navigation }) {
       {
         client_name: clientName.trim(),
         client_phone: clientPhone.trim() || null,
-        brand: brand.trim() || null,
-        model: model.trim() || null,
+        brand: normalize(brand),
+        model: normalize(model),
         year_min: yearMin ? Number(yearMin) : null,
         year_max: yearMax ? Number(yearMax) : null,
         price_min: priceMin ? Number(priceMin) : null,
         price_max: priceMax ? Number(priceMax) : null,
-        status: 'activa',                 // NUEVO
-        source: source.trim() || null,    // NUEVO
+        status: 'activa',
+        source: source.trim() || null,
       },
     ])
 
@@ -59,133 +66,127 @@ export default function NewSearchScreen({ navigation }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.sectionTitle}>Datos del cliente</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Card>
+          <SectionTitle title="Datos del cliente" />
+          <Input
+            label="Nombre *"
+            value={clientName}
+            onChangeText={setClientName}
+            placeholder="Juan Pérez"
+          />
+          <Input
+            label="Teléfono"
+            value={clientPhone}
+            onChangeText={setClientPhone}
+            placeholder="+54 9 2494..."
+            keyboardType="phone-pad"
+          />
+          <Input
+            label="Origen del lead"
+            value={source}
+            onChangeText={setSource}
+            placeholder="WhatsApp, Instagram, Marketplace..."
+          />
+        </Card>
 
-      <Text style={styles.label}>Nombre *</Text>
-      <TextInput
-        style={styles.input}
-        value={clientName}
-        onChangeText={setClientName}
-        placeholder="Juan Pérez"
-      />
+        <Spacer size={SPACING.lg} />
 
-      <Text style={styles.label}>Teléfono</Text>
-      <TextInput
-        style={styles.input}
-        value={clientPhone}
-        onChangeText={setClientPhone}
-        placeholder="+54 9 2494..."
-        keyboardType="phone-pad"
-      />
+        <Card>
+          <SectionTitle title="Qué busca" />
+          <Input
+            label="Marca"
+            value={brand}
+            onChangeText={setBrand}
+            placeholder="Ford, Chevrolet..."
+          />
+          <Input
+            label="Modelo"
+            value={model}
+            onChangeText={setModel}
+            placeholder="Ecosport, Onix..."
+          />
 
-      <Text style={styles.label}>Origen del lead</Text>
-      <TextInput
-        style={styles.input}
-        value={source}
-        onChangeText={setSource}
-        placeholder="WhatsApp, Instagram, Marketplace..."
-      />
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Input
+                label="Año desde"
+                value={yearMin}
+                onChangeText={setYearMin}
+                keyboardType="numeric"
+                placeholder="2012"
+              />
+            </View>
+            <View style={styles.col}>
+              <Input
+                label="Año hasta"
+                value={yearMax}
+                onChangeText={setYearMax}
+                keyboardType="numeric"
+                placeholder="2016"
+              />
+            </View>
+          </View>
 
-      <Text style={styles.sectionTitle}>Qué busca</Text>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Input
+                label="Precio mín."
+                value={priceMin}
+                onChangeText={setPriceMin}
+                keyboardType="numeric"
+                placeholder="5000000"
+              />
+            </View>
+            <View style={styles.col}>
+              <Input
+                label="Precio máx."
+                value={priceMax}
+                onChangeText={setPriceMax}
+                keyboardType="numeric"
+                placeholder="10000000"
+              />
+            </View>
+          </View>
+        </Card>
 
-      <Text style={styles.label}>Marca</Text>
-      <TextInput
-        style={styles.input}
-        value={brand}
-        onChangeText={setBrand}
-        placeholder="Ford, Chevrolet..."
-      />
+        <Spacer size={SPACING.xl} />
 
-      <Text style={styles.label}>Modelo</Text>
-      <TextInput
-        style={styles.input}
-        value={model}
-        onChangeText={setModel}
-        placeholder="Ecosport, Onix..."
-      />
-
-      <View style={styles.row}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={styles.label}>Año desde</Text>
-          <TextInput
-            style={styles.input}
-            value={yearMin}
-            onChangeText={setYearMin}
-            keyboardType="numeric"
-            placeholder="2012"
+        <View style={styles.buttonRow}>
+          <Button
+            title={saving ? 'Guardando...' : 'Guardar búsqueda'}
+            onPress={handleSave}
+            disabled={saving}
+            color={COLORS.primary}
           />
         </View>
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={styles.label}>Año hasta</Text>
-          <TextInput
-            style={styles.input}
-            value={yearMax}
-            onChangeText={setYearMax}
-            keyboardType="numeric"
-            placeholder="2016"
-          />
-        </View>
-      </View>
-
-      <View style={styles.row}>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={styles.label}>Precio mín.</Text>
-          <TextInput
-            style={styles.input}
-            value={priceMin}
-            onChangeText={setPriceMin}
-            keyboardType="numeric"
-            placeholder="5000000"
-          />
-        </View>
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={styles.label}>Precio máx.</Text>
-          <TextInput
-            style={styles.input}
-            value={priceMax}
-            onChangeText={setPriceMax}
-            keyboardType="numeric"
-            placeholder="10000000"
-          />
-        </View>
-      </View>
-
-      <View style={{ marginTop: 20 }}>
-        <Button
-          title={saving ? 'Guardando...' : 'Guardar búsqueda'}
-          onPress={handleSave}
-          disabled={saving}
-        />
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 14,
-    marginTop: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 4,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    backgroundColor: COLORS.background,
   },
   row: {
     flexDirection: 'row',
-    marginTop: 8,
+    gap: SPACING.sm,
+  },
+  col: {
+    flex: 1,
+  },
+  buttonRow: {
+    marginBottom: SPACING.lg,
   },
 })

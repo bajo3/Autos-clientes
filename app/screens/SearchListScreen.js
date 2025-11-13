@@ -1,34 +1,46 @@
 // app/screens/SearchListScreen.js
-import React, { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  View,
-  Text,
-  FlatList,
   ActivityIndicator,
   Button,
-  StyleSheet,
+  FlatList,
   RefreshControl,
-  TouchableOpacity,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native'
+import { COLORS, SPACING, TYPO } from '../../components/theme'
+import Badge from '../../components/ui/Badge'
+import FilterBar from '../../components/ui/FilterBar'
+import ListItem from '../../components/ui/ListItem'
+import SectionTitle from '../../components/ui/SectionTitle'
+import Spacer from '../../components/ui/Spacer'
 import { supabase } from '../lib/supabase'
 
 export default function SearchListScreen({ navigation }) {
   const [searches, setSearches] = useState([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [filterStatus, setFilterStatus] = useState('activa') // 'activa' | 'todas'
 
+  const [filterStatus, setFilterStatus] = useState('activa') // 'activa' | 'todas'
+  const [matchFilter, setMatchFilter] = useState('todos') // 'todos' | 'con' | 'sin'
+  const [sortMode, setSortMode] = useState('agenda') // 'agenda' | 'nuevo' | 'viejo'
+  const [viewMode, setViewMode] = useState('list') // 'list' | 'compact' | 'ultra' | 'grid'
+
+  // ---------- CARGA DE DATOS ----------
   const loadSearches = async () => {
     setLoading(true)
 
     try {
-      // Pedimos TODO lo que necesitamos en paralelo:
       const [searchRes, vehicleRes, interactionsRes] = await Promise.all([
         supabase
           .from('search_requests')
           .select('*')
           .order('created_at', { ascending: false }),
-        supabase.from('vehicles').select('brand, model, year, price'),
+        supabase
+          .from('vehicles')
+          .select('brand, model, year, price, archived')
+          .eq('archived', false),
         supabase.from('interactions').select('search_request_id, created_at'),
       ])
 
@@ -49,7 +61,6 @@ export default function SearchListScreen({ navigation }) {
       const vehiclesData = vehicleRes.data || []
       const interactionsData = interactionsRes.data || []
 
-      // Mapa de última interacción por búsqueda
       const latestBySearchId = {}
       interactionsData.forEach((i) => {
         const prev = latestBySearchId[i.search_request_id]
@@ -63,21 +74,6 @@ export default function SearchListScreen({ navigation }) {
       const todayM = now.getMonth()
       const todayD = now.getDate()
 
-      const isSameDayOrBeforeToday = (dateStr) => {
-        if (!dateStr) return false
-        const d = new Date(dateStr)
-        const y = d.getFullYear()
-        const m = d.getMonth()
-        const dd = d.getDate()
-        // <= hoy (ignorando hora)
-        if (y < todayY) return true
-        if (y > todayY) return false
-        if (m < todayM) return true
-        if (m > todayM) return false
-        if (dd <= todayD) return true
-        return false
-      }
-
       const isSameDay = (dateStr) => {
         if (!dateStr) return false
         const d = new Date(dateStr)
@@ -88,9 +84,7 @@ export default function SearchListScreen({ navigation }) {
         )
       }
 
-      // Enriquecemos cada búsqueda:
       const enhanced = searchesData.map((s) => {
-        // Match de autos: marca + rango de año + rango de precio
         const matches = vehiclesData.filter((v) => {
           const brandOk =
             !s.brand ||
@@ -145,190 +139,310 @@ export default function SearchListScreen({ navigation }) {
     setRefreshing(false)
   }, [])
 
-  // Calculamos el orden de "agenda"
+  // ---------- PRIORIDAD / URGENCIA ----------
   const getPriority = (s) => {
     const now = new Date()
     const reminder = s.reminder_at ? new Date(s.reminder_at) : null
-    const lastInt = s.lastInteractionAt
-      ? new Date(s.lastInteractionAt)
-      : null
+    const lastInt = s.lastInteractionAt ? new Date(s.lastInteractionAt) : null
 
-    // Recordatorio vencido o para hoy → prioridad máxima
-    if (reminder && reminder <= now) return 0
-    // Recordatorio futuro → segundo nivel
-    if (reminder && reminder > now) return 1
-    // Sin recordatorio pero con interacciones → tercero
-    if (lastInt) return 2
-    // Nunca tocada → cuarta
-    return 3
+    if (reminder && reminder <= now) return 0 // HOY / vencido
+    if (reminder && reminder > now) return 1 // futuro
+    if (lastInt) return 2 // tuvo movimiento
+    return 3 // nada
   }
 
-  const filteredSearchesRaw =
+  const getPriorityInfo = (s) => {
+    const p = getPriority(s)
+    if (s.reminder_at) {
+      if (s.hasReminderToday) {
+        return { priority: p, label: 'HOY', icon: '⏰' }
+      }
+      return { priority: p, label: 'Próx.', icon: '📅' }
+    }
+    if (s.lastInteractionAt) {
+      return { priority: p, label: 'Seguimiento', icon: '💬' }
+    }
+    return { priority: p, label: 'Baja', icon: '⬇️' }
+  }
+
+  // ---------- FILTROS / ORDEN ----------
+  let filtered =
     filterStatus === 'todas'
       ? searches
       : searches.filter((s) => (s.status || 'activa') === 'activa')
 
-  const filteredSearches = [...filteredSearchesRaw].sort((a, b) => {
+  filtered = filtered.filter((s) => {
+    if (matchFilter === 'con') return !!s.has_match
+    if (matchFilter === 'sin') return !s.has_match
+    return true
+  })
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortMode === 'nuevo') {
+      return new Date(b.created_at) - new Date(a.created_at)
+    }
+    if (sortMode === 'viejo') {
+      return new Date(a.created_at) - new Date(b.created_at)
+    }
+
     const pa = getPriority(a)
     const pb = getPriority(b)
     if (pa !== pb) return pa - pb
 
-    // Si tienen recordatorio, ordenamos por el más próximo
     if (a.reminder_at && b.reminder_at) {
       return new Date(a.reminder_at) - new Date(b.reminder_at)
     }
 
-    // Si tienen última interacción, ordenamos por la más vieja primero
     if (a.lastInteractionAt && b.lastInteractionAt) {
       return new Date(a.lastInteractionAt) - new Date(b.lastInteractionAt)
     }
 
-    // Fallback: más nuevas primero
     return new Date(b.created_at) - new Date(a.created_at)
   })
 
- const renderItem = ({ item }) => {
-  const status = item.status || 'activa'
-  const statusLabelMap = {
-    activa: 'Activa',
-    contactado: 'Contactado',
-    cerrada: 'Cerrada',
-    descartada: 'Descartada',
+  // ---------- RENDER ITEM (3 MODOS) ----------
+  const buildBaseInfo = (item) => {
+    const status = item.status || 'activa'
+    const statusLabelMap = {
+      activa: 'Activa',
+      contactado: 'Contactado',
+      cerrada: 'Cerrada',
+      descartada: 'Descartada',
+    }
+    const statusLabel = statusLabelMap[status] || status
+
+    const hasMatch = item.has_match
+    const matchCount = item.match_count || 0
+    const priorityInfo = getPriorityInfo(item)
+
+    const subtitle = `${item.brand || 'Marca ?'} ${item.model || ''}`.trim()
+    const alta = new Date(item.created_at).toLocaleDateString('es-AR')
+
+    const parts = []
+
+    if (hasMatch) {
+      parts.push(`🚗 ${matchCount}`)
+    } else {
+      parts.push('🚗 0')
+    }
+
+    if (priorityInfo) {
+      parts.push(`${priorityInfo.icon} ${priorityInfo.label}`)
+    }
+
+    parts.push(`📅 ${alta}`)
+
+    const meta = parts.join('   ')
+
+    return { status, statusLabel, hasMatch, matchCount, priorityInfo, subtitle, alta, meta }
   }
-  const statusLabel = statusLabelMap[status] || status
 
-  const hasMatch = item.has_match
-  const matchCount = item.match_count || 0
-  const lastInteractionAt = item.lastInteractionAt
-  const hasReminderToday = item.hasReminderToday
+  const renderStandardItem = (item, compact = false) => {
+    const { status, statusLabel, meta, subtitle } = buildBaseInfo(item)
 
-  return (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('SearchDetail', { search: item })}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.card, hasMatch && styles.cardMatched]}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.clientName}>{item.client_name}</Text>
-          <View style={[styles.statusBadge, styles[`status_${status}`]]}>
-            <Text style={styles.statusText}>{statusLabel}</Text>
-          </View>
+    const badge = (
+      <Badge
+        label={statusLabel}
+        status={status}
+        tone="outline"
+        style={{ marginBottom: 4 }}
+      />
+    )
+
+    return (
+      <ListItem
+        title={item.client_name}
+        subtitle={subtitle}
+        meta={meta}
+        badge={badge}
+        compact={compact}
+        onPress={() => navigation.navigate('SearchDetail', { search: item })}
+      />
+    )
+  }
+
+  const renderUltraItem = (item) => {
+    const { statusLabel, meta, subtitle, priorityInfo } = buildBaseInfo(item)
+
+    return (
+      <View style={styles.ultraItemContainer}>
+        <View style={styles.ultraLeft}>
+          <Text style={styles.ultraTitle} numberOfLines={1}>
+            {item.client_name} · {subtitle}
+          </Text>
+          <Text style={styles.ultraMeta} numberOfLines={1}>
+            {meta}
+          </Text>
         </View>
-
-        <Text style={styles.line}>
-          {item.brand} {item.model} ({item.year_min || '?'} - {item.year_max || '?'})
-        </Text>
-        <Text style={styles.line}>
-          Precio:{' '}
-          {item.price_min ? item.price_min.toLocaleString('es-AR') : '?'} -{' '}
-          {item.price_max ? item.price_max.toLocaleString('es-AR') : '?'}
-        </Text>
-
-        {item.source ? (
-          <Text style={styles.source}>Origen: {item.source}</Text>
-        ) : null}
-
-        {item.client_phone ? (
-          <Text style={styles.line}>Tel: {item.client_phone}</Text>
-        ) : null}
-
-        {hasMatch && (
-          <Text style={styles.matchText}>
-            ✅{' '}
-            {matchCount === 1
-              ? '1 auto coincide'
-              : `${matchCount} autos coinciden`}
+        <View style={styles.ultraRight}>
+          <Text style={styles.ultraUrgency}>
+            {priorityInfo.icon} {statusLabel}
           </Text>
-        )}
-
-        {lastInteractionAt && (
-          <Text style={styles.lastInteractionText}>
-            Último contacto:{' '}
-            {new Date(lastInteractionAt).toLocaleString('es-AR')}
-          </Text>
-        )}
-
-        {item.reminder_at && (
-          <Text
-            style={[
-              styles.reminderText,
-              hasReminderToday && styles.reminderTodayText,
-            ]}
-          >
-            Recordar:{' '}
-            {new Date(item.reminder_at).toLocaleDateString('es-AR')}
-            {hasReminderToday ? ' (hoy)' : ''}
-          </Text>
-        )}
-
-        <Text style={styles.date}>
-          Alta: {new Date(item.created_at).toLocaleString('es-AR')}
-        </Text>
-
-        
+        </View>
       </View>
-    </TouchableOpacity>
-  )
-}
+    )
+  }
 
+  const renderGridItem = (item) => {
+    const { status, statusLabel, meta, subtitle, priorityInfo } = buildBaseInfo(
+      item
+    )
 
+    return (
+      <View style={styles.gridCard}>
+        <View style={styles.gridHeaderRow}>
+          <Text style={styles.gridTitle} numberOfLines={1}>
+            {item.client_name}
+          </Text>
+          <Text style={styles.gridStatus}>
+            {priorityInfo.icon} {statusLabel}
+          </Text>
+        </View>
+        <Text style={styles.gridSubtitle} numberOfLines={1}>
+          {subtitle}
+        </Text>
+        <Text style={styles.gridMeta} numberOfLines={2}>
+          {meta}
+        </Text>
+        <View style={styles.gridFooter}>
+          <Text style={styles.gridFooterText}>Ver</Text>
+          <Text style={styles.gridFooterStatus}>{status}</Text>
+        </View>
+      </View>
+    )
+  }
+
+  const renderItem = ({ item }) => {
+    if (viewMode === 'ultra') {
+      return renderUltraItem(item)
+    }
+    if (viewMode === 'grid') {
+      return (
+        <View style={styles.gridWrapper}>
+          {renderGridItem(item)}
+        </View>
+      )
+    }
+    if (viewMode === 'compact') {
+      return renderStandardItem(item, true)
+    }
+    return renderStandardItem(item, false)
+  }
+
+  // ---------- FILTROS / VIEW MODES ----------
+  const statusFilters = [
+    { key: 'activa', label: 'Activas', state: 'activa' },
+    { key: 'todas', label: 'Todas', state: 'todas' },
+  ].map((f) => ({
+    key: f.key,
+    label: f.label,
+    active: filterStatus === f.state,
+    size: 'sm',
+    onPress: () => setFilterStatus(f.state),
+  }))
+
+  const matchFilters = [
+    { key: 'con', label: 'Con match', state: 'con' },
+    { key: 'sin', label: 'Sin match', state: 'sin' },
+    { key: 'todos', label: 'Match: todos', state: 'todos' },
+  ].map((f) => ({
+    key: f.key,
+    label: f.label,
+    active: matchFilter === f.state,
+    size: 'sm',
+    onPress: () => setMatchFilter(f.state),
+  }))
+
+  const sortFilters = [
+    { key: 'agenda', label: 'Agenda', state: 'agenda' },
+    { key: 'nuevo', label: 'Más nuevos', state: 'nuevo' },
+    { key: 'viejo', label: 'Más viejos', state: 'viejo' },
+  ].map((f) => ({
+    key: f.key,
+    label: f.label,
+    active: sortMode === f.state,
+    size: 'sm',
+    onPress: () => setSortMode(f.state),
+  }))
+
+  const viewFilters = [
+    { key: 'list', label: 'Lista', state: 'list' },
+    { key: 'compact', label: 'Compacto', state: 'compact' },
+    { key: 'ultra', label: 'Ultra', state: 'ultra' },
+    { key: 'grid', label: 'Grid', state: 'grid' },
+  ].map((f) => ({
+    key: f.key,
+    label: f.label,
+    active: viewMode === f.state,
+    size: 'sm',
+    onPress: () => setViewMode(f.state),
+  }))
+
+  const allFilters = [
+    ...statusFilters,
+    ...matchFilters,
+    ...sortFilters,
+    ...viewFilters,
+  ]
+
+  const numColumns = viewMode === 'grid' ? 2 : 1
+
+  // ---------- UI ----------
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <View>
-          <Text style={styles.title}>Búsquedas</Text>
-          <View style={styles.filterRow}>
-            <Text
-              style={[
-                styles.filterChip,
-                filterStatus === 'activa' && styles.filterChipActive,
-              ]}
-              onPress={() => setFilterStatus('activa')}
-            >
-              Activas
-            </Text>
-            <Text
-              style={[
-                styles.filterChip,
-                filterStatus === 'todas' && styles.filterChipActive,
-              ]}
-              onPress={() => setFilterStatus('todas')}
-            >
-              Todas
-            </Text>
-          </View>
-        </View>
-        <View style={styles.actionsRow}>
+      {/* título */}
+      <View style={styles.headerBlock}>
+        <SectionTitle
+          title="Búsquedas"
+          subtitle="Agenda ordenada por recordatorios y actividad"
+        />
+      </View>
+
+      {/* menú principal en fila */}
+      <View style={styles.actionsRow}>
+        <View style={{ flex: 1, marginRight: SPACING.xs }}>
           <Button
             title="Dash"
+            color={COLORS.primary}
             onPress={() => navigation.navigate('Dashboard')}
           />
-          <View style={{ width: 8 }} />
+        </View>
+        <View style={{ flex: 1, marginHorizontal: SPACING.xs }}>
           <Button
             title="Autos"
+            color={COLORS.success}
             onPress={() => navigation.navigate('VehicleList')}
           />
-          <View style={{ width: 8 }} />
+        </View>
+        <View style={{ flex: 1, marginLeft: SPACING.xs }}>
           <Button
             title="+ Nueva"
+            color={COLORS.secondary}
             onPress={() => navigation.navigate('NewSearch')}
           />
         </View>
       </View>
 
-      {loading && filteredSearches.length === 0 ? (
-        <ActivityIndicator size="large" />
+      {/* barra única de filtros */}
+      <FilterBar items={allFilters} horizontal />
+      <Spacer size={SPACING.sm} />
+
+      {loading && sorted.length === 0 ? (
+        <ActivityIndicator size="large" color={COLORS.primary} />
       ) : (
         <FlatList
-          data={filteredSearches}
-          keyExtractor={(item) => item.id.toString()}
+          data={sorted}
+          keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          numColumns={numColumns}
+          key={numColumns} // fuerza re-render al cambiar entre lista / grid
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          contentContainerStyle={{ paddingBottom: SPACING.xxl }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              No hay búsquedas en este filtro.
+              Todavía no hay búsquedas cargadas.
             </Text>
           }
         />
@@ -337,80 +451,108 @@ export default function SearchListScreen({ navigation }) {
   )
 }
 
+// ---------- ESTILOS ----------
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  topBar: {
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+  },
+  headerBlock: {
+    marginBottom: SPACING.sm,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  emptyText: {
+    marginTop: SPACING.lg,
+    textAlign: 'center',
+    fontSize: TYPO.small,
+    color: COLORS.textMuted,
+  },
+
+  // ultra-compacto
+  ultraItemContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.borderMuted || '#1f2733',
+  },
+  ultraLeft: {
+    flex: 1,
+  },
+  ultraRight: {
+    marginLeft: SPACING.sm,
+    alignItems: 'flex-end',
+  },
+  ultraTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  ultraMeta: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  ultraUrgency: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+
+  // grid
+  gridWrapper: {
+    flex: 1,
+    padding: SPACING.xs,
+  },
+  gridCard: {
+    flex: 1,
+    borderRadius: 10,
+    padding: SPACING.sm,
+    backgroundColor: COLORS.card || '#050816',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border || '#121826',
+  },
+  gridHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  title: { fontSize: 20, fontWeight: 'bold' },
-  actionsRow: { flexDirection: 'row', alignItems: 'center' },
-  filterRow: { flexDirection: 'row', marginTop: 4 },
-  filterChip: {
-    marginRight: 8,
-    fontSize: 13,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 20,
-    backgroundColor: '#eee',
-    color: '#555',
+  gridTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
   },
-  filterChipActive: {
-    backgroundColor: '#007aff22',
-    color: '#007aff',
+  gridStatus: {
+    fontSize: 11,
+    color: COLORS.textMuted,
   },
-  card: {
-    backgroundColor: '#f4f4f4',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+  gridSubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 2,
   },
-  cardMatched: {
-    backgroundColor: '#e6ffe6',
-    borderWidth: 1,
-    borderColor: '#28a745',
+  gridMeta: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginBottom: 6,
   },
-  cardHeader: {
+  gridFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
   },
-  clientName: { fontSize: 16, fontWeight: 'bold', marginRight: 8 },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
+  gridFooterText: {
+    fontSize: 11,
+    color: COLORS.primary,
   },
-  statusText: { fontSize: 11, fontWeight: '600', color: '#fff' },
-  status_activa: { backgroundColor: '#28a745' },
-  status_contactado: { backgroundColor: '#ffc107' },
-  status_cerrada: { backgroundColor: '#007bff' },
-  status_descartada: { backgroundColor: '#6c757d' },
-  line: { fontSize: 14 },
-  source: { fontSize: 12, color: '#555', marginTop: 2 },
-  matchText: {
-    marginTop: 4,
-    color: '#28a745',
-    fontSize: 13,
-    fontWeight: '600',
+  gridFooterStatus: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textTransform: 'capitalize',
   },
-  lastInteractionText: {
-    marginTop: 2,
-    fontSize: 12,
-    color: '#444',
-  },
-  reminderText: {
-    marginTop: 2,
-    fontSize: 12,
-    color: '#555',
-  },
-  reminderTodayText: {
-    color: '#d9534f',
-    fontWeight: '700',
-  },
-  date: { marginTop: 6, fontSize: 12, color: '#666' },
-  emptyText: { marginTop: 40, textAlign: 'center', color: '#666' },
 })

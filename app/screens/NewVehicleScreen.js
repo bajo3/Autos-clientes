@@ -8,11 +8,20 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
-  TextInput,
   View,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { COLORS, SPACING } from '../../components/theme'
+import Card from '../../components/ui/Card'
+import SectionTitle from '../../components/ui/SectionTitle'
+import Input from '../../components/ui/Input'
+import Spacer from '../../components/ui/Spacer'
+
+// helper para normalizar texto
+const normalize = (str) => {
+  if (!str) return ''
+  return str.trim().toLowerCase()
+}
 
 export default function NewVehicleScreen({ navigation }) {
   const [brand, setBrand] = useState('')
@@ -43,17 +52,18 @@ export default function NewVehicleScreen({ navigation }) {
 
     const { error } = await supabase.from('vehicles').insert([
       {
-        brand: brand.trim(),
-        model: model.trim(),
-        version: version.trim() || null,
+        brand: normalize(brand),
+        model: normalize(model),
+        version: normalize(version) || null,
         year: year ? Number(year) : null,
         price: price ? Number(price) : null,
         km: km ? Number(km) : null,
-        color: color.trim() || null,
+        color: normalize(color) || null,
         is_consignment: isConsignment,
         owner_name: isConsignment ? ownerName.trim() : null,
         owner_phone: isConsignment ? ownerPhone.trim() || null : null,
         notes: notes.trim() || null,
+        archived: false,
       },
     ])
 
@@ -71,165 +81,151 @@ export default function NewVehicleScreen({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: COLORS.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      // Ajustá este offset si el header de la stack tapa algo
-      keyboardVerticalOffset={120}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionTitle}>Datos del auto</Text>
-
-        <Text style={styles.label}>Marca *</Text>
-        <TextInput
-          style={styles.input}
-          value={brand}
-          onChangeText={setBrand}
-          placeholder="Ford, Chevrolet..."
-        />
-
-        <Text style={styles.label}>Modelo *</Text>
-        <TextInput
-          style={styles.input}
-          value={model}
-          onChangeText={setModel}
-          placeholder="Ecosport, Onix..."
-        />
-
-        <Text style={styles.label}>Versión</Text>
-        <TextInput
-          style={styles.input}
-          value={version}
-          onChangeText={setVersion}
-          placeholder="1.6 SE, LTZ, etc."
-        />
-
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.label}>Año</Text>
-            <TextInput
-              style={styles.input}
-              value={year}
-              onChangeText={setYear}
-              keyboardType="numeric"
-              placeholder="2015"
-            />
-          </View>
-          <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={styles.label}>KM</Text>
-            <TextInput
-              style={styles.input}
-              value={km}
-              onChangeText={setKm}
-              keyboardType="numeric"
-              placeholder="120000"
-            />
-          </View>
-        </View>
-
-        <Text style={styles.label}>Color</Text>
-        <TextInput
-          style={styles.input}
-          value={color}
-          onChangeText={setColor}
-          placeholder="Blanco, gris..."
-        />
-
-        <Text style={styles.label}>Precio</Text>
-        <TextInput
-          style={styles.input}
-          value={price}
-          onChangeText={setPrice}
-          keyboardType="numeric"
-          placeholder="10000000"
-        />
-
-        <View style={styles.switchRow}>
-          <Text style={styles.label}>Es consignación</Text>
-          <Switch
-            value={isConsignment}
-            onValueChange={setIsConsignment}
+        <Card>
+          <SectionTitle title="Datos del auto" />
+          <Input
+            label="Marca *"
+            value={brand}
+            onChangeText={setBrand}
+            placeholder="Ford, Chevrolet..."
           />
-        </View>
+          <Input
+            label="Modelo *"
+            value={model}
+            onChangeText={setModel}
+            placeholder="Ecosport, Onix..."
+          />
+          <Input
+            label="Versión"
+            value={version}
+            onChangeText={setVersion}
+            placeholder="1.6 SE, LTZ, etc."
+          />
 
-        {isConsignment && (
-          <>
-            <Text style={styles.label}>Dueño (nombre)</Text>
-            <TextInput
-              style={styles.input}
-              value={ownerName}
-              onChangeText={setOwnerName}
-              placeholder="Nombre del dueño"
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Input
+                label="Año"
+                value={year}
+                onChangeText={setYear}
+                keyboardType="numeric"
+                placeholder="2015"
+              />
+            </View>
+            <View style={styles.col}>
+              <Input
+                label="KM"
+                value={km}
+                onChangeText={setKm}
+                keyboardType="numeric"
+                placeholder="120000"
+              />
+            </View>
+          </View>
+
+          <Input
+            label="Color"
+            value={color}
+            onChangeText={setColor}
+            placeholder="Blanco, gris..."
+          />
+          <Input
+            label="Precio"
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="numeric"
+            placeholder="10000000"
+          />
+        </Card>
+
+        <Spacer size={SPACING.lg} />
+
+        <Card>
+          <SectionTitle title="Consignación" />
+          <View style={styles.switchRow}>
+            <Input
+              label="Es consignación"
+              editable={false}
+              value={isConsignment ? 'Sí' : 'No'}
+              style={{ opacity: 0 }}
             />
+            <Switch value={isConsignment} onValueChange={setIsConsignment} />
+          </View>
 
-            <Text style={styles.label}>Teléfono del dueño</Text>
-            <TextInput
-              style={styles.input}
-              value={ownerPhone}
-              onChangeText={setOwnerPhone}
-              keyboardType="phone-pad"
-              placeholder="+54 9..."
-            />
-          </>
-        )}
+          {isConsignment && (
+            <>
+              <Input
+                label="Dueño (nombre)"
+                value={ownerName}
+                onChangeText={setOwnerName}
+                placeholder="Nombre del dueño"
+              />
+              <Input
+                label="Teléfono del dueño"
+                value={ownerPhone}
+                onChangeText={setOwnerPhone}
+                keyboardType="phone-pad"
+                placeholder="+54 9..."
+              />
+            </>
+          )}
+        </Card>
 
-        <Text style={styles.label}>Notas</Text>
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Detalles, estado, papeles, etc."
-          multiline
-        />
+        <Spacer size={SPACING.lg} />
 
-        <View style={{ marginTop: 20, marginBottom: 20 }}>
+        <Card>
+          <SectionTitle title="Notas" />
+          <Input
+            multiline
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Detalles, estado, papeles, etc."
+          />
+        </Card>
+
+        <Spacer size={SPACING.xl} />
+
+        <View style={styles.buttonRow}>
           <Button
             title={saving ? 'Guardando...' : 'Guardar auto'}
             onPress={handleSave}
             disabled={saving}
+            color={COLORS.primary}
           />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-    
   )
-  
 }
-
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    paddingBottom: 40, // un poco de espacio extra abajo
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 14,
-    marginTop: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 4,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    backgroundColor: COLORS.background,
   },
   row: {
     flexDirection: 'row',
-    marginTop: 8,
+    gap: SPACING.sm,
+  },
+  col: {
+    flex: 1,
   },
   switchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    justifyContent: 'space-between',
+    marginTop: SPACING.sm,
+  },
+  buttonRow: {
+    marginBottom: SPACING.lg,
   },
 })

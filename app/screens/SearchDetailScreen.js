@@ -15,19 +15,32 @@ import {
   Linking,
 } from 'react-native'
 import { supabase } from '../lib/supabase'
+import {
+  COLORS,
+  SPACING,
+  RADIUS,
+  TYPO,
+  SHADOWS,
+} from '../../components/theme'
 
 const WHATSAPP_TEMPLATES = [
   {
     key: 'followup',
     label: 'Seguimiento',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${search.model || ''}.`,
+      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${
+        search.model || ''
+      }.`,
   },
   {
     key: 'new_unit',
     label: 'Ingresó unidad',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${search.brand || ''} ${search.model || ''} dentro del rango que buscabas. ¿Querés que te pase más info?`,
+      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${
+        search.brand || ''
+      } ${
+        search.model || ''
+      } dentro del rango que buscabas. ¿Querés que te pase más info?`,
   },
 ]
 
@@ -63,6 +76,9 @@ export default function SearchDetailScreen({ route, navigation }) {
       if (search.year_max) query = query.lte('year', search.year_max)
       if (search.price_min) query = query.gte('price', search.price_min)
       if (search.price_max) query = query.lte('price', search.price_max)
+
+      // Solo autos no archivados
+      query = query.eq('archived', false)
 
       const { data, error } = await query.order('created_at', {
         ascending: false,
@@ -229,9 +245,7 @@ export default function SearchDetailScreen({ route, navigation }) {
 
   const renderInteraction = (item) => (
     <View key={String(item.id)} style={styles.interactionCard}>
-      <Text style={styles.interactionType}>
-        {item.type || 'interacción'}
-      </Text>
+      <Text style={styles.interactionType}>{item.type || 'interacción'}</Text>
       <Text style={styles.interactionNotes}>{item.notes}</Text>
       <Text style={styles.interactionDate}>
         {new Date(item.created_at).toLocaleString('es-AR')}
@@ -261,10 +275,12 @@ export default function SearchDetailScreen({ route, navigation }) {
         {/* Datos de la búsqueda */}
         <View style={styles.searchCard}>
           <View style={styles.searchHeader}>
-            <View style={{ flex: 1, marginRight: 8 }}>
+            <View style={{ flex: 1, marginRight: SPACING.sm }}>
               <Text style={styles.clientName}>{search.client_name}</Text>
               {search.client_phone ? (
-                <Text style={styles.clientLine}>Tel: {search.client_phone}</Text>
+                <Text style={styles.clientLine}>
+                  Tel: {search.client_phone}
+                </Text>
               ) : null}
             </View>
             <View style={[styles.statusBadge, styles[`status_${status}`]]}>
@@ -313,15 +329,17 @@ export default function SearchDetailScreen({ route, navigation }) {
               title="Contactado"
               onPress={() => updateStatus('contactado')}
               disabled={updatingStatus}
+              color={COLORS.warning}
             />
             <Button
               title="Cerrada"
               onPress={() => updateStatus('cerrada')}
               disabled={updatingStatus}
+              color={COLORS.statusClosed}
             />
             <Button
               title="Descartar"
-              color="#777"
+              color={COLORS.statusDiscarded}
               onPress={() => updateStatus('descartada')}
               disabled={updatingStatus}
             />
@@ -334,23 +352,28 @@ export default function SearchDetailScreen({ route, navigation }) {
               onPress={() =>
                 navigation.navigate('EditSearch', { searchId: search.id })
               }
+              color={COLORS.secondary}
             />
           </View>
 
           {/* Recordatorio rápido */}
           <View style={styles.reminderRow}>
-            <Button
-              title="Recordar en 7 días"
-              onPress={() => setReminderInDays(7)}
-              disabled={updatingReminder}
-            />
-            <View style={{ width: 8 }} />
-            <Button
-              title="Quitar record."
-              color="#777"
-              onPress={clearReminder}
-              disabled={updatingReminder}
-            />
+            <View style={{ flex: 1, marginRight: SPACING.xs }}>
+              <Button
+                title="Recordar en 7 días"
+                onPress={() => setReminderInDays(7)}
+                disabled={updatingReminder}
+                color={COLORS.primary}
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: SPACING.xs }}>
+              <Button
+                title="Quitar record."
+                color={COLORS.subtle}
+                onPress={clearReminder}
+                disabled={updatingReminder}
+              />
+            </View>
           </View>
 
           {/* WhatsApp rápido */}
@@ -386,7 +409,7 @@ export default function SearchDetailScreen({ route, navigation }) {
         </Text>
 
         {loadingVehicles ? (
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         ) : vehicles.length === 0 ? (
           <Text style={styles.emptyText}>
             No hay autos que cumplan con esta búsqueda.
@@ -399,7 +422,7 @@ export default function SearchDetailScreen({ route, navigation }) {
         <Text style={styles.sectionTitle}>Historial de contacto</Text>
 
         {loadingInteractions ? (
-          <ActivityIndicator size="small" />
+          <ActivityIndicator size="small" color={COLORS.primary} />
         ) : interactions.length === 0 ? (
           <Text style={styles.emptyTextSmall}>
             Todavía no hay interacciones.
@@ -429,6 +452,7 @@ export default function SearchDetailScreen({ route, navigation }) {
           <TextInput
             style={styles.interactionInput}
             placeholder="Ej: Lo llamé, quedó en avisar la semana que viene..."
+            placeholderTextColor={COLORS.inputPlaceholder}
             multiline
             value={newInteractionNotes}
             onChangeText={setNewInteractionNotes}
@@ -437,6 +461,7 @@ export default function SearchDetailScreen({ route, navigation }) {
             title={savingInteraction ? 'Guardando...' : 'Guardar interacción'}
             onPress={saveInteraction}
             disabled={savingInteraction}
+            color={COLORS.primary}
           />
         </View>
       </ScrollView>
@@ -445,149 +470,251 @@ export default function SearchDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+  },
+
+  // tarjeta principal de la búsqueda
   searchCard: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: COLORS.cardAlt,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.card,
   },
   searchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.sm,
   },
-  clientName: { fontSize: 18, fontWeight: '600', marginBottom: 2 },
-  clientLine: { fontSize: 14 },
-  date: { marginTop: 4, fontSize: 12, color: '#666' },
-  reminderText: { marginTop: 4, fontSize: 12, color: '#444' },
+  clientName: {
+    fontSize: TYPO.subtitle,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  clientLine: {
+    fontSize: TYPO.body,
+    color: COLORS.textSoft,
+    marginTop: 2,
+  },
+  date: {
+    marginTop: SPACING.xs,
+    fontSize: TYPO.small,
+    color: COLORS.textMuted,
+  },
+  reminderText: {
+    marginTop: SPACING.xs,
+    fontSize: TYPO.small,
+    color: COLORS.textMuted,
+  },
+
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
+    alignSelf: 'flex-start',
   },
-  statusText: { fontSize: 11, fontWeight: '600', color: '#fff' },
-  status_activa: { backgroundColor: '#28a745' },
-  status_contactado: { backgroundColor: '#ffc107' },
-  status_cerrada: { backgroundColor: '#007bff' },
-  status_descartada: { backgroundColor: '#6c757d' },
+  statusText: {
+    fontSize: TYPO.tiny,
+    fontWeight: '700',
+    color: COLORS.textInverted,
+  },
+  status_activa: {
+    backgroundColor: COLORS.statusActive,
+  },
+  status_contactado: {
+    backgroundColor: COLORS.statusContacted,
+  },
+  status_cerrada: {
+    backgroundColor: COLORS.statusClosed,
+  },
+  status_descartada: {
+    backgroundColor: COLORS.statusDiscarded,
+  },
+
   statusActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   editButtonRow: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
     alignSelf: 'flex-start',
   },
   reminderRow: {
     flexDirection: 'row',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
+
   whatsappLink: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#128C7E',
+    marginTop: SPACING.sm,
+    fontSize: TYPO.body,
+    color: COLORS.success,
     fontWeight: '600',
   },
-  templatesContainer: { marginTop: 10 },
-  templatesTitle: { fontSize: 13, fontWeight: '600', marginBottom: 4 },
-  templatesRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  templatesContainer: {
+    marginTop: SPACING.sm,
+  },
+  templatesTitle: {
+    fontSize: TYPO.small,
+    fontWeight: '600',
+    color: COLORS.textSoft,
+    marginBottom: SPACING.xs,
+  },
+  templatesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
   templateChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    backgroundColor: '#128C7E22',
-    marginRight: 8,
-    marginBottom: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.secondarySoft,
+    marginRight: SPACING.xs,
+    marginBottom: SPACING.xs,
   },
-  templateChipText: { fontSize: 13, color: '#128C7E', fontWeight: '600' },
-  sectionTitle: {
-    fontSize: 16,
+  templateChipText: {
+    fontSize: TYPO.small,
+    color: COLORS.secondary,
     fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 4,
   },
+
+  sectionTitle: {
+    fontSize: TYPO.subtitle,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+
+  // autos que matchean
   vehicleCard: {
-    backgroundColor: '#f8f8f8',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 6,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    marginBottom: SPACING.sm,
   },
   vehicleHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
   },
   vehicleTitle: {
-    fontSize: 15,
+    fontSize: TYPO.body,
     fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
+    color: COLORS.text,
   },
   badgeConsigna: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 100,
-    backgroundColor: '#ffe9d5',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.highlight,
   },
-  badgeText: { fontSize: 11, color: '#d26900', fontWeight: '500' },
-  vehicleLine: { fontSize: 14 },
-  emptyText: { marginBottom: 8, color: '#666' },
-  emptyTextSmall: { fontSize: 12, color: '#666', marginBottom: 6 },
+  badgeText: {
+    fontSize: TYPO.tiny,
+    fontWeight: '600',
+    color: COLORS.textInverted,
+  },
+  vehicleLine: {
+    fontSize: TYPO.small,
+    color: COLORS.textSoft,
+    marginTop: 2,
+  },
+
+  emptyText: {
+    fontSize: TYPO.body,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.md,
+  },
+  emptyTextSmall: {
+    fontSize: TYPO.small,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.md,
+  },
+
+  // interacciones
   interactionCard: {
-    backgroundColor: '#f1f1f1',
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 4,
+    backgroundColor: COLORS.cardAlt,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.cardBorder,
+    marginBottom: SPACING.sm,
   },
   interactionType: {
-    fontSize: 12,
+    fontSize: TYPO.small,
     fontWeight: '600',
-    textTransform: 'capitalize',
+    color: COLORS.primary,
+    marginBottom: 2,
   },
-  interactionNotes: { fontSize: 13 },
-  interactionDate: { fontSize: 11, color: '#777', marginTop: 2 },
+  interactionNotes: {
+    fontSize: TYPO.body,
+    color: COLORS.textSoft,
+    marginBottom: 4,
+  },
+  interactionDate: {
+    fontSize: TYPO.tiny,
+    color: COLORS.textMuted,
+  },
+
+  // nueva interacción
   newInteractionBox: {
-    marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-  },
-  newInteractionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  interactionTypeRow: { flexDirection: 'row', marginBottom: 4 },
-  interactionTypeChip: {
-    fontSize: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 16,
+    marginTop: SPACING.lg,
+    padding: SPACING.md,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.cardAlt,
     borderWidth: 1,
-    borderColor: '#ccc',
-    marginRight: 6,
-    color: '#555',
+    borderColor: COLORS.cardBorder,
+  },
+  newInteractionTitle: {
+    fontSize: TYPO.subtitle,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  interactionTypeRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.sm,
+  },
+  interactionTypeChip: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.chipBorder,
+    backgroundColor: COLORS.chipBackground,
+    marginRight: SPACING.xs,
+    fontSize: TYPO.small,
+    color: COLORS.chipText,
   },
   interactionTypeChipActive: {
-    borderColor: '#007aff',
-    color: '#007aff',
-    backgroundColor: '#007aff11',
+    backgroundColor: COLORS.chipActiveBackground,
+    borderColor: COLORS.chipActiveBorder,
+    color: COLORS.chipTextActive,
   },
   interactionInput: {
+    minHeight: 80,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minHeight: 60,
-    marginBottom: 6,
+    borderColor: COLORS.inputBorder,
+    backgroundColor: COLORS.inputBackground,
+    color: COLORS.text,
+    fontSize: TYPO.body,
+    marginBottom: SPACING.sm,
+    textAlignVertical: 'top',
   },
 })
