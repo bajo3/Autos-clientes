@@ -1,14 +1,14 @@
 // components/theme.js
 
 export const COLORS = {
-  // Fondo general (modo oscuro limpio)
-  background: '#020617',      // slate-950
-  backgroundSoft: '#020617',  // uniforme
+  // Fondo general
+  background: '#020617', // slate-950
+  backgroundSoft: '#020617',
 
   // Superficies / cards
   card: '#020617',
   cardAlt: '#030712',
-  cardBorder: '#1e293b',
+  cardBorder: '#1f2937',
 
   // Header de navegación
   headerBackground: '#020617',
@@ -22,7 +22,7 @@ export const COLORS = {
 
   // Inputs
   inputBackground: '#020617',
-  inputBorder: '#1e293b',
+  inputBorder: '#1f2937',
   inputPlaceholder: '#64748b',
 
   // Acentos
@@ -57,13 +57,12 @@ export const COLORS = {
   chipTextActive: '#e5e7eb',
 
   // Especiales
-  highlight: '#f97316',
-  subtle: '#1f2937',
+  subtle: '#111827',
   separator: '#111827',
 
   // Tarjetas especiales
   cardMatchBackground: '#022c22',
-  cardReminderBackground: '#111827',
+  cardReminderBackground: '#020617',
 }
 
 export const SPACING = {
@@ -84,18 +83,18 @@ export const RADIUS = {
 
 export const TYPO = {
   title: 22,
-  subtitle: 16,
-  body: 14,
-  small: 12,
+  subtitle: 18,
+  body: 15,
+  small: 13,
   tiny: 11,
 }
 
 export const SHADOWS = {
   card: {
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    elevation: 4,
   },
 }

@@ -17,13 +17,21 @@ const STATUS_COLORS = {
 export default function Badge({ label, status, tone = 'solid', style }) {
   const color = status ? STATUS_COLORS[status] || COLORS.primary : COLORS.primary
 
+  const bg =
+    tone === 'solid'
+      ? color + '22'
+      : 'transparent'
+
+  const border =
+    tone === 'solid'
+      ? color + '55'
+      : color + '88'
+
   return (
     <View
       style={[
         styles.base,
-        tone === 'solid'
-          ? { backgroundColor: color + '33', borderColor: color + '66' }
-          : { backgroundColor: 'transparent', borderColor: color + '80' },
+        { backgroundColor: bg, borderColor: border },
         style,
       ]}
     >

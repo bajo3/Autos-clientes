@@ -13,7 +13,7 @@ export default function Card({
 
   return (
     <Wrapper
-      activeOpacity={0.9}
+      activeOpacity={onPress ? 0.9 : 1}
       onPress={onPress}
       style={[
         styles.base,
@@ -29,9 +29,10 @@ export default function Card({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.cardAlt,
     borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
     ...SHADOWS.card,
@@ -44,6 +45,7 @@ const styles = StyleSheet.create({
   },
   soft: {
     backgroundColor: COLORS.backgroundSoft,
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
+    elevation: 0,
   },
 })

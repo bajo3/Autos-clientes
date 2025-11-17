@@ -31,6 +31,7 @@ export default function ListItem({
         >
           {title}
         </Text>
+
         {subtitle ? (
           <Text
             style={[styles.subtitle, muted && styles.subtitleMuted]}
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm + 2,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.cardAlt,
     borderWidth: 1,
     borderColor: COLORS.cardBorder,
     flexDirection: 'row',
