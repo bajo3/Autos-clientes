@@ -13,6 +13,7 @@
     },
     "android": {
       "softwareKeyboardLayoutMode": "pan",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,7 +21,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.bajo31.JDClient"
     },
     "web": {
       "output": "static",
@@ -44,6 +46,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "81289fac-a04b-4b35-8a45-4ade86fe55ff"
+      }
     }
   }
 }

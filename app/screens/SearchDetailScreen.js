@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
-  Button,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -24,24 +23,21 @@ import {
 } from '../../components/theme'
 import { vehicleMatchesSearch } from '../lib/match'
 import { getSearchStatusLabel } from '../constants/status'
-
-
+import SectionTitle from '../../components/ui/SectionTitle'
+import Spacer from '../../components/ui/Spacer'
 
 const WHATSAPP_TEMPLATES = [
   {
     key: 'followup',
     label: 'Seguimiento',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${search.model || ''
-      }.`,
+      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${search.model || ''}.`,
   },
   {
     key: 'new_unit',
     label: 'Ingresó unidad',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${search.brand || ''
-      } ${search.model || ''
-      } dentro del rango que buscabas. ¿Querés que te pase más info?`,
+      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${search.brand || ''} ${search.model || ''} dentro del rango que buscabas. ¿Querés que te pase más info?`,
   },
 ]
 
@@ -81,12 +77,9 @@ export default function SearchDetailScreen({ route, navigation }) {
         setVehicles([])
       } else {
         const vehiclesData = data || []
-
         const matches = vehiclesData.filter((v) =>
           vehicleMatchesSearch(v, search)
         )
-
-
         setVehicles(matches)
       }
     } catch (e) {
@@ -96,7 +89,6 @@ export default function SearchDetailScreen({ route, navigation }) {
     setLoadingVehicles(false)
   }
 
-
   const loadInteractions = async () => {
     setLoadingInteractions(true)
     const { data, error } = await supabase
@@ -104,7 +96,6 @@ export default function SearchDetailScreen({ route, navigation }) {
       .select('id, type, notes, created_at')
       .eq('search_request_id', search.id)
       .order('created_at', { ascending: false })
-
 
     if (error) {
       console.log('Error loading interactions', error)
@@ -258,7 +249,6 @@ export default function SearchDetailScreen({ route, navigation }) {
   const status = search.status || 'activa'
   const statusLabel = getSearchStatusLabel(status)
 
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -269,6 +259,12 @@ export default function SearchDetailScreen({ route, navigation }) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <SectionTitle
+          title="Detalle de búsqueda"
+          subtitle={search.client_name || 'Cliente sin nombre'}
+        />
+        <Spacer size={SPACING.sm} />
+
         {/* Datos de la búsqueda */}
         <View style={styles.searchCard}>
           <View style={styles.searchHeader}>
@@ -322,55 +318,79 @@ export default function SearchDetailScreen({ route, navigation }) {
 
           {/* Acciones de estado */}
           <View style={styles.statusActionsRow}>
-            <Button
-              title="Contactado"
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.statusButtonWarn,
+                updatingStatus && styles.buttonDisabled,
+              ]}
               onPress={() => updateStatus('contactado')}
               disabled={updatingStatus}
-              color={COLORS.warning}
-            />
-            <Button
-              title="Cerrada"
+            >
+              <Text style={styles.statusButtonText}>Contactado</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.statusButtonClosed,
+                updatingStatus && styles.buttonDisabled,
+              ]}
               onPress={() => updateStatus('cerrada')}
               disabled={updatingStatus}
-              color={COLORS.statusClosed}
-            />
-            <Button
-              title="Descartar"
-              color={COLORS.statusDiscarded}
+            >
+              <Text style={styles.statusButtonText}>Cerrada</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.statusButton,
+                styles.statusButtonDiscard,
+                updatingStatus && styles.buttonDisabled,
+              ]}
               onPress={() => updateStatus('descartada')}
               disabled={updatingStatus}
-            />
+            >
+              <Text style={styles.statusButtonText}>Descartar</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Botón para editar la búsqueda */}
           <View style={styles.editButtonRow}>
-            <Button
-              title="Editar Cliente"
+            <TouchableOpacity
+              style={styles.editButton}
               onPress={() =>
                 navigation.navigate('EditSearch', { searchId: search.id })
               }
-              color={COLORS.secondary}
-            />
+            >
+              <Text style={styles.editButtonText}>Editar cliente</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Recordatorio rápido */}
           <View style={styles.reminderRow}>
-            <View style={{ flex: 1, marginRight: SPACING.xs }}>
-              <Button
-                title="Recordar en 7 días"
-                onPress={() => setReminderInDays(7)}
-                disabled={updatingReminder}
-                color={COLORS.primary}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: SPACING.xs }}>
-              <Button
-                title="Quitar record."
-                color={COLORS.subtle}
-                onPress={clearReminder}
-                disabled={updatingReminder}
-              />
-            </View>
+            <TouchableOpacity
+              style={[
+                styles.reminderButton,
+                styles.reminderButtonPrimary,
+                updatingReminder && styles.buttonDisabled,
+              ]}
+              onPress={() => setReminderInDays(7)}
+              disabled={updatingReminder}
+            >
+              <Text style={styles.reminderButtonText}>Recordar en 7 días</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.reminderButton,
+                styles.reminderButtonGhost,
+                updatingReminder && styles.buttonDisabled,
+              ]}
+              onPress={clearReminder}
+              disabled={updatingReminder}
+            >
+              <Text style={styles.reminderButtonGhostText}>
+                Quitar record.
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* WhatsApp rápido */}
@@ -438,7 +458,7 @@ export default function SearchDetailScreen({ route, navigation }) {
                 style={[
                   styles.interactionTypeChip,
                   newInteractionType === type &&
-                  styles.interactionTypeChipActive,
+                    styles.interactionTypeChipActive,
                 ]}
                 onPress={() => setNewInteractionType(type)}
               >
@@ -454,12 +474,18 @@ export default function SearchDetailScreen({ route, navigation }) {
             value={newInteractionNotes}
             onChangeText={setNewInteractionNotes}
           />
-          <Button
-            title={savingInteraction ? 'Guardando...' : 'Guardar interacción'}
+          <TouchableOpacity
+            style={[
+              styles.saveInteractionButton,
+              savingInteraction && styles.buttonDisabled,
+            ]}
             onPress={saveInteraction}
             disabled={savingInteraction}
-            color={COLORS.primary}
-          />
+          >
+            <Text style={styles.saveInteractionText}>
+              {savingInteraction ? 'Guardando...' : 'Guardar interacción'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -469,7 +495,7 @@ export default function SearchDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingHorizontal: SPACING.lg,
@@ -543,13 +569,75 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: SPACING.sm,
   },
+  statusButton: {
+    flex: 1,
+    marginHorizontal: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  statusButtonWarn: {
+    backgroundColor: COLORS.warning,
+  },
+  statusButtonClosed: {
+    backgroundColor: COLORS.statusClosed,
+  },
+  statusButtonDiscard: {
+    backgroundColor: COLORS.statusDiscarded,
+  },
+  statusButtonText: {
+    fontSize: TYPO.small,
+    fontWeight: '600',
+    color: COLORS.textInverted,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
   editButtonRow: {
     marginTop: SPACING.sm,
     alignSelf: 'flex-start',
   },
+  editButton: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.secondary,
+  },
+  editButtonText: {
+    fontSize: TYPO.small,
+    fontWeight: '600',
+    color: COLORS.textInverted,
+  },
+
   reminderRow: {
     flexDirection: 'row',
     marginTop: SPACING.sm,
+  },
+  reminderButton: {
+    flex: 1,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    marginHorizontal: SPACING.xs,
+  },
+  reminderButtonPrimary: {
+    backgroundColor: COLORS.primary,
+  },
+  reminderButtonText: {
+    fontSize: TYPO.small,
+    fontWeight: '600',
+    color: COLORS.textInverted,
+  },
+  reminderButtonGhost: {
+    borderWidth: 1,
+    borderColor: COLORS.chipBorder,
+    backgroundColor: COLORS.chipBackground,
+  },
+  reminderButtonGhostText: {
+    fontSize: TYPO.small,
+    fontWeight: '600',
+    color: COLORS.chipTextActive,
   },
 
   whatsappLink: {
@@ -617,12 +705,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.highlight,
+    backgroundColor: COLORS.secondarySoft,
   },
   badgeText: {
     fontSize: TYPO.tiny,
     fontWeight: '600',
-    color: COLORS.textInverted,
+    color: COLORS.secondary,
   },
   vehicleLine: {
     fontSize: TYPO.small,
@@ -713,5 +801,17 @@ const styles = StyleSheet.create({
     fontSize: TYPO.body,
     marginBottom: SPACING.sm,
     textAlignVertical: 'top',
+  },
+  saveInteractionButton: {
+    marginTop: SPACING.xs,
+    paddingVertical: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+  },
+  saveInteractionText: {
+    fontSize: TYPO.body,
+    fontWeight: '600',
+    color: COLORS.textInverted,
   },
 })

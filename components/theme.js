@@ -2,67 +2,64 @@
 
 export const COLORS = {
   // Fondo general
-  background: '#020617', // slate-950
-  backgroundSoft: '#020617',
+  background: '#05060A', // casi negro, toque azulado
+  backgroundSoft: '#070816',
 
   // Superficies / cards
-  card: '#020617',
-  cardAlt: '#030712',
-  cardBorder: '#1f2937',
+  card: '#070816',
+  cardAlt: '#050814',
+  cardBorder: '#15192B',
 
   // Header de navegación
-  headerBackground: '#020617',
-  headerText: '#e5e7eb',
+  headerBackground: 'rgba(5, 6, 10, 0.9)',
+  headerText: '#F9FAFB',
 
   // Texto
-  text: '#e5e7eb',
-  textSoft: '#cbd5f5',
-  textMuted: '#64748b',
+  text: '#E5E7EB',
+  textSoft: '#D1D5DB',
+  textMuted: '#64748B',
   textInverted: '#020617',
 
   // Inputs
-  inputBackground: '#020617',
-  inputBorder: '#1f2937',
-  inputPlaceholder: '#64748b',
+  inputBackground: '#050814',
+  inputBorder: '#1F2937',
+  inputPlaceholder: '#6B7280',
 
-  // Acentos
-  primary: '#38bdf8',
-  primarySoft: '#0b1120',
-  primaryBorder: '#0ea5e9',
-  secondary: '#a855f7',
-  secondarySoft: '#1e1b4b',
+  // Acentos neón
+  primary: '#58F0F5',      // cian neón
+  primarySoft: '#071923',
+  primaryBorder: '#22D3EE',
 
-  success: '#22c55e',
-  warning: '#eab308',
-  danger: '#ef4444',
+  secondary: '#B388FF',    // violeta neón
+  secondarySoft: '#1E1038',
+
+  // Estados
+  success: '#22C55E',
+  warning: '#EAB308',
+  danger: '#F97373',
 
   // Estados de búsqueda
-  statusActive: '#22c55e',
-  statusContacted: '#eab308',
-  statusClosed: '#2563eb',
-  statusDiscarded: '#6b7280',
+  statusActive: '#22C55E',
+  statusContacted: '#EAB308',
+  statusClosed: '#60A5FA',
+  statusDiscarded: '#6B7280',
 
   // Estados de autos
-  statusDisponible: '#22c55e',
-  statusReservado: '#eab308',
-  statusVendido: '#f97316',
-  statusBaja: '#6b7280',
+  statusDisponible: '#22C55E',
+  statusReservado: '#EAB308',
+  statusVendido: '#F97316',
+  statusBaja: '#6B7280',
 
   // Chips / filtros
-  chipBackground: '#020617',
-  chipBorder: '#1f2937',
-  chipText: '#9ca3af',
-  chipActiveBackground: '#0f172a',
-  chipActiveBorder: '#38bdf8',
-  chipTextActive: '#e5e7eb',
+  chipBackground: '#05060F',
+  chipBorder: '#1E293B',
+  chipText: '#9CA3AF',
+  chipActiveBackground: '#020617',
+  chipActiveBorder: '#58F0F5',
+  chipTextActive: '#E5E7EB',
 
-  // Especiales
-  subtle: '#111827',
+  subtle: '#020617',
   separator: '#111827',
-
-  // Tarjetas especiales
-  cardMatchBackground: '#022c22',
-  cardReminderBackground: '#020617',
 }
 
 export const SPACING = {
@@ -92,9 +89,9 @@ export const TYPO = {
 export const SHADOWS = {
   card: {
     shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
+    shadowOpacity: 0.32,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 6,
   },
 }
