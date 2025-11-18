@@ -15,6 +15,8 @@ import Card from '../../components/ui/Card'
 import SectionTitle from '../../components/ui/SectionTitle'
 import Input from '../../components/ui/Input'
 import Spacer from '../../components/ui/Spacer'
+import { normalizeText, normalizeNullable } from '../lib/normalize'
+
 
 export default function NewSearchScreen({ navigation }) {
   const [clientName, setClientName] = useState('')
@@ -42,8 +44,8 @@ export default function NewSearchScreen({ navigation }) {
       {
         client_name: clientName.trim(),
         client_phone: clientPhone.trim() || null,
-        brand: normalize(brand),
-        model: normalize(model),
+        brand: normalizeNullable(brand),
+        model: normalizeNullable(model),
         year_min: yearMin ? Number(yearMin) : null,
         year_max: yearMax ? Number(yearMax) : null,
         price_min: priceMin ? Number(priceMin) : null,
@@ -52,6 +54,7 @@ export default function NewSearchScreen({ navigation }) {
         source: source.trim() || null,
       },
     ])
+
 
     setSaving(false)
 

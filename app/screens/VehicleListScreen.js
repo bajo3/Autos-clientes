@@ -28,9 +28,12 @@ export default function VehicleListScreen({ navigation }) {
     setLoading(true)
     const { data, error } = await supabase
       .from('vehicles')
-      .select('*')
-      .eq('archived', false) // SOLO no archivados
+      .select(
+        'id, brand, model, version, year, km, price, color, is_consignment, owner_name, owner_phone, created_at'
+      )
+      .eq('archived', false)
       .order('created_at', { ascending: false })
+
 
     if (error) {
       console.log('Error loading vehicles', error)

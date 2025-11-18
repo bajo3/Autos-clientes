@@ -20,7 +20,12 @@ export default function VehicleDetailScreen({ route }) {
     setLoading(true)
 
     try {
-      let query = supabase.from('search_requests').select('*')
+      let query = supabase
+        .from('search_requests')
+        .select(
+          'id, client_name, client_phone, brand, model, year_min, year_max, price_min, price_max, created_at'
+        )
+
 
       if (vehicle.brand) {
         query = query.eq('brand', vehicle.brand)

@@ -19,6 +19,8 @@ import Card from '../../components/ui/Card'
 import SectionTitle from '../../components/ui/SectionTitle'
 import Input from '../../components/ui/Input'
 import FilterBar from '../../components/ui/FilterBar'
+import { normalizeNullable } from '../lib/normalize'
+
 
 export default function EditSearchScreen({ route, navigation }) {
   const { searchId } = route.params
@@ -83,8 +85,8 @@ export default function EditSearchScreen({ route, navigation }) {
       .update({
         client_name: clientName.trim(),
         client_phone: clientPhone.trim() || null,
-        brand: brand.trim() || null,
-        model: model.trim() || null,
+        brand: normalizeNullable(brand),
+        model: normalizeNullable(model),
         year_min: yearMin ? Number(yearMin) : null,
         year_max: yearMax ? Number(yearMax) : null,
         price_min: priceMin ? Number(priceMin) : null,
@@ -93,6 +95,7 @@ export default function EditSearchScreen({ route, navigation }) {
         status,
       })
       .eq('id', searchId)
+
 
     setSaving(false)
 

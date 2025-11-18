@@ -15,6 +15,8 @@ import Card from '../../components/ui/Card'
 import SectionTitle from '../../components/ui/SectionTitle'
 import Input from '../../components/ui/Input'
 import FilterBar from '../../components/ui/FilterBar'
+import { normalizeNullable, normalizeText } from '../lib/normalize'
+
 
 // mismo helper
 const normalize = (str) => {
@@ -87,13 +89,13 @@ export default function EditVehicleScreen({ route, navigation }) {
     const { error } = await supabase
       .from('vehicles')
       .update({
-        brand: normalize(brand),
-        model: normalize(model),
-        version: normalize(version) || null,
+        brand: normalizeText(brand),
+        model: normalizeText(model),
+        version: normalizeNullable(version),
+        color: normalizeNullable(color),
         year: year ? Number(year) : null,
         km: km ? Number(km) : null,
         price: price ? Number(price) : null,
-        color: normalize(color) || null,
         status,
         is_consignment: isConsignment,
         owner_name: isConsignment ? ownerName.trim() || null : null,

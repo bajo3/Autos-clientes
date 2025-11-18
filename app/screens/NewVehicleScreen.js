@@ -16,6 +16,8 @@ import Card from '../../components/ui/Card'
 import SectionTitle from '../../components/ui/SectionTitle'
 import Input from '../../components/ui/Input'
 import Spacer from '../../components/ui/Spacer'
+import { normalizeNullable, normalizeText } from '../lib/normalize'
+
 
 // helper para normalizar texto
 const normalize = (str) => {
@@ -52,13 +54,13 @@ export default function NewVehicleScreen({ navigation }) {
 
     const { error } = await supabase.from('vehicles').insert([
       {
-        brand: normalize(brand),
-        model: normalize(model),
-        version: normalize(version) || null,
+        brand: normalizeText(brand),
+        model: normalizeText(model),
+        version: normalizeNullable(version),
+        color: normalizeNullable(color),
         year: year ? Number(year) : null,
         price: price ? Number(price) : null,
         km: km ? Number(km) : null,
-        color: normalize(color) || null,
         is_consignment: isConsignment,
         owner_name: isConsignment ? ownerName.trim() : null,
         owner_phone: isConsignment ? ownerPhone.trim() || null : null,

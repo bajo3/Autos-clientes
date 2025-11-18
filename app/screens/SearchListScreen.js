@@ -16,6 +16,8 @@ import ListItem from '../../components/ui/ListItem'
 import SectionTitle from '../../components/ui/SectionTitle'
 import Spacer from '../../components/ui/Spacer'
 import { supabase } from '../lib/supabase'
+import { vehicleMatchesSearch } from '../lib/match'
+import { getSearchStatusLabel } from '../constants/status'
 
 export default function SearchListScreen({ navigation }) {
   const [searches, setSearches] = useState([])
@@ -35,13 +37,19 @@ export default function SearchListScreen({ navigation }) {
       const [searchRes, vehicleRes, interactionsRes] = await Promise.all([
         supabase
           .from('search_requests')
-          .select('*')
+          .select(
+            'id, client_name, brand, model, year_min, year_max, price_min, price_max, status, reminder_at, created_at'
+          )
           .order('created_at', { ascending: false }),
+
         supabase
           .from('vehicles')
           .select('brand, model, year, price, archived')
           .eq('archived', false),
-        supabase.from('interactions').select('search_request_id, created_at'),
+
+        supabase
+          .from('interactions')
+          .select('search_request_id, created_at'),
       ])
 
       if (searchRes.error) {
@@ -85,26 +93,7 @@ export default function SearchListScreen({ navigation }) {
       }
 
       const enhanced = searchesData.map((s) => {
-        const matches = vehiclesData.filter((v) => {
-          const brandOk =
-            !s.brand ||
-            !v.brand ||
-            v.brand.toLowerCase() === s.brand.toLowerCase()
-          const modelOk =
-            !s.model ||
-            !v.model ||
-            v.model.toLowerCase() === s.model.toLowerCase()
-
-          const yearOk =
-            (!s.year_min || !v.year || v.year >= s.year_min) &&
-            (!s.year_max || !v.year || v.year <= s.year_max)
-
-          const priceOk =
-            (!s.price_min || !v.price || v.price >= s.price_min) &&
-            (!s.price_max || !v.price || v.price <= s.price_max)
-
-          return brandOk && modelOk && yearOk && priceOk
-        })
+        const matches = vehiclesData.filter((v) => vehicleMatchesSearch(v, s))
 
         const lastInteractionAt = latestBySearchId[s.id] || null
         const hasReminderToday = s.reminder_at && isSameDay(s.reminder_at)
@@ -200,16 +189,14 @@ export default function SearchListScreen({ navigation }) {
     return new Date(b.created_at) - new Date(a.created_at)
   })
 
-  // ---------- RENDER ITEM (3 MODOS) ----------
+  const totalCount = searches.length
+  const filteredCount = sorted.length
+  const withMatchCount = sorted.filter((s) => s.has_match).length
+
+  // ---------- BASE INFO PARA RENDER ----------
   const buildBaseInfo = (item) => {
     const status = item.status || 'activa'
-    const statusLabelMap = {
-      activa: 'Activa',
-      contactado: 'Contactado',
-      cerrada: 'Cerrada',
-      descartada: 'Descartada',
-    }
-    const statusLabel = statusLabelMap[status] || status
+    const statusLabel = getSearchStatusLabel(status)
 
     const hasMatch = item.has_match
     const matchCount = item.match_count || 0
@@ -237,6 +224,7 @@ export default function SearchListScreen({ navigation }) {
     return { status, statusLabel, hasMatch, matchCount, priorityInfo, subtitle, alta, meta }
   }
 
+  // ---------- RENDER ITEM (3 MODOS) ----------
   const renderStandardItem = (item, compact = false) => {
     const { status, statusLabel, meta, subtitle } = buildBaseInfo(item)
 
@@ -289,24 +277,26 @@ export default function SearchListScreen({ navigation }) {
     )
 
     return (
-      <View style={styles.gridCard}>
-        <View style={styles.gridHeaderRow}>
-          <Text style={styles.gridTitle} numberOfLines={1}>
-            {item.client_name}
+      <View style={styles.gridWrapper}>
+        <View style={styles.gridCard}>
+          <View style={styles.gridHeaderRow}>
+            <Text style={styles.gridTitle} numberOfLines={1}>
+              {item.client_name}
+            </Text>
+            <Text style={styles.gridStatus}>
+              {priorityInfo.icon} {statusLabel}
+            </Text>
+          </View>
+          <Text style={styles.gridSubtitle} numberOfLines={1}>
+            {subtitle}
           </Text>
-          <Text style={styles.gridStatus}>
-            {priorityInfo.icon} {statusLabel}
+          <Text style={styles.gridMeta} numberOfLines={2}>
+            {meta}
           </Text>
-        </View>
-        <Text style={styles.gridSubtitle} numberOfLines={1}>
-          {subtitle}
-        </Text>
-        <Text style={styles.gridMeta} numberOfLines={2}>
-          {meta}
-        </Text>
-        <View style={styles.gridFooter}>
-          <Text style={styles.gridFooterText}>Ver</Text>
-          <Text style={styles.gridFooterStatus}>{status}</Text>
+          <View style={styles.gridFooter}>
+            <Text style={styles.gridFooterText}>Ver</Text>
+            <Text style={styles.gridFooterStatus}>{status}</Text>
+          </View>
         </View>
       </View>
     )
@@ -317,11 +307,7 @@ export default function SearchListScreen({ navigation }) {
       return renderUltraItem(item)
     }
     if (viewMode === 'grid') {
-      return (
-        <View style={styles.gridWrapper}>
-          {renderGridItem(item)}
-        </View>
-      )
+      return renderGridItem(item)
     }
     if (viewMode === 'compact') {
       return renderStandardItem(item, true)
@@ -427,12 +413,28 @@ export default function SearchListScreen({ navigation }) {
       <FilterBar items={allFilters} horizontal />
       <Spacer size={SPACING.sm} />
 
+      {/* resumen arriba de la lista */}
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryText}>
+          Total:{' '}
+          <Text style={styles.summaryStrong}>{totalCount}</Text>
+        </Text>
+        <Text style={styles.summaryText}>
+          Viendo:{' '}
+          <Text style={styles.summaryStrong}>{filteredCount}</Text>
+        </Text>
+        <Text style={styles.summaryText}>
+          Con match:{' '}
+          <Text style={styles.summaryStrong}>{withMatchCount}</Text>
+        </Text>
+      </View>
+
       {loading && sorted.length === 0 ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
       ) : (
         <FlatList
           data={sorted}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           numColumns={numColumns}
           key={numColumns} // fuerza re-render al cambiar entre lista / grid
@@ -472,6 +474,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: TYPO.small,
     color: COLORS.textMuted,
+  },
+
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  summaryText: {
+    fontSize: TYPO.tiny,
+    color: COLORS.textMuted,
+  },
+  summaryStrong: {
+    color: COLORS.text,
+    fontWeight: '600',
   },
 
   // ultra-compacto

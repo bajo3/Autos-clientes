@@ -22,24 +22,25 @@ import {
   TYPO,
   SHADOWS,
 } from '../../components/theme'
+import { vehicleMatchesSearch } from '../lib/match'
+import { getSearchStatusLabel } from '../constants/status'
+
+
 
 const WHATSAPP_TEMPLATES = [
   {
     key: 'followup',
     label: 'Seguimiento',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${
-        search.model || ''
+      `Hola ${search.client_name}, ¿cómo va? Te escribo para saber si seguís buscando ${search.brand || ''} ${search.model || ''
       }.`,
   },
   {
     key: 'new_unit',
     label: 'Ingresó unidad',
     buildMessage: (search) =>
-      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${
-        search.brand || ''
-      } ${
-        search.model || ''
+      `Hola ${search.client_name}, ingresó una unidad que puede interesarte: ${search.brand || ''
+      } ${search.model || ''
       } dentro del rango que buscabas. ¿Querés que te pase más info?`,
   },
 ]
@@ -68,26 +69,25 @@ export default function SearchDetailScreen({ route, navigation }) {
   const loadMatches = async () => {
     setLoadingVehicles(true)
     try {
-      let query = supabase.from('vehicles').select('*')
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select(
+          'id, brand, model, version, year, km, price, color, is_consignment, archived, created_at'
+        )
+        .eq('archived', false)
 
-      if (search.brand) query = query.eq('brand', search.brand)
-      if (search.model) query = query.eq('model', search.model)
-      if (search.year_min) query = query.gte('year', search.year_min)
-      if (search.year_max) query = query.lte('year', search.year_max)
-      if (search.price_min) query = query.gte('price', search.price_min)
-      if (search.price_max) query = query.lte('price', search.price_max)
-
-      // Solo autos no archivados
-      query = query.eq('archived', false)
-
-      const { data, error } = await query.order('created_at', {
-        ascending: false,
-      })
       if (error) {
         console.log('Error loading matched vehicles', error)
         setVehicles([])
       } else {
-        setVehicles(data || [])
+        const vehiclesData = data || []
+
+        const matches = vehiclesData.filter((v) =>
+          vehicleMatchesSearch(v, search)
+        )
+
+
+        setVehicles(matches)
       }
     } catch (e) {
       console.log('Unexpected error loading matches', e)
@@ -96,13 +96,15 @@ export default function SearchDetailScreen({ route, navigation }) {
     setLoadingVehicles(false)
   }
 
+
   const loadInteractions = async () => {
     setLoadingInteractions(true)
     const { data, error } = await supabase
       .from('interactions')
-      .select('*')
+      .select('id, type, notes, created_at')
       .eq('search_request_id', search.id)
       .order('created_at', { ascending: false })
+
 
     if (error) {
       console.log('Error loading interactions', error)
@@ -254,13 +256,8 @@ export default function SearchDetailScreen({ route, navigation }) {
   )
 
   const status = search.status || 'activa'
-  const statusLabelMap = {
-    activa: 'Activa',
-    contactado: 'Contactado',
-    cerrada: 'Cerrada',
-    descartada: 'Descartada',
-  }
-  const statusLabel = statusLabelMap[status] || status
+  const statusLabel = getSearchStatusLabel(status)
+
 
   return (
     <KeyboardAvoidingView
@@ -441,7 +438,7 @@ export default function SearchDetailScreen({ route, navigation }) {
                 style={[
                   styles.interactionTypeChip,
                   newInteractionType === type &&
-                    styles.interactionTypeChipActive,
+                  styles.interactionTypeChipActive,
                 ]}
                 onPress={() => setNewInteractionType(type)}
               >
